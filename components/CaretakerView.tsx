@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { SeniorProfile, Medication, DoctorAppointment, MedicationDoseLog } from '@/lib/types';
+import { SeniorProfile, Medication, DoctorAppointment, MedicationDoseLog, CareJournalEntry } from '@/lib/types';
 import { 
-  Stethoscope, Plus, Camera, AlertCircle, Calendar, Trash2, Edit3, 
-  Sparkles, CheckCircle2, ShieldAlert, Pill, Clock, AlertTriangle, Send, FileText
+  Stethoscope, Plus, Camera, AlertCircle, Calendar, Trash2, 
+  Sparkles, ShieldAlert, Pill, Clock, AlertTriangle, Send, CheckSquare, Square
 } from 'lucide-react';
 import { ParsedMedicationResult } from '@/lib/gemini';
 
@@ -13,12 +13,14 @@ interface CaretakerViewProps {
   medications: Medication[];
   appointments: DoctorAppointment[];
   doseLogs: MedicationDoseLog[];
+  journal: CareJournalEntry[];
   onAddMedication: (med: Medication) => void;
   onUpdateMedication: (med: Medication) => void;
   onDeleteMedication: (id: string) => void;
   onAddAppointment: (apt: DoctorAppointment) => void;
   onDeleteAppointment: (id: string) => void;
   onTriggerAppointmentEmail: (apt: DoctorAppointment) => void;
+  onAddJournalNote?: (note: string) => void;
 }
 
 export function CaretakerView({
@@ -26,17 +28,34 @@ export function CaretakerView({
   medications,
   appointments,
   doseLogs,
+  journal,
   onAddMedication,
   onUpdateMedication,
   onDeleteMedication,
   onAddAppointment,
   onDeleteAppointment,
   onTriggerAppointmentEmail,
+  onAddJournalNote,
 }: CaretakerViewProps) {
   // Modal states
   const [showAddMedModal, setShowAddMedModal] = useState(false);
   const [showScannerModal, setShowScannerModal] = useState(false);
   const [showAddAptModal, setShowAddAptModal] = useState(false);
+
+  // Daily Care Checklist state
+  const [checklist, setChecklist] = useState<{ id: string; label: string; done: boolean }[]>([
+    { id: 'c1', label: 'Check and record morning blood pressure (Target: <130/80)', done: true },
+    { id: 'c2', label: 'Verify weekly pill organizer restock for morning and evening', done: true },
+    { id: 'c3', label: 'Inspect lower extremities for edema / ankle swelling (Amlodipine guard)', done: false },
+    { id: 'c4', label: 'Ensure zero grapefruit or grapefruit juice served at dinner', done: true },
+    { id: 'c5', label: 'Review upcoming cardiology preparation requirements with Sarah', done: false },
+  ]);
+
+  const toggleChecklistItem = (id: string) => {
+    setChecklist(
+      checklist.map((item) => (item.id === id ? { ...item, done: !item.done } : item))
+    );
+  };
 
   // AI Scanner state
   const [isScanning, setIsScanning] = useState(false);
@@ -68,7 +87,6 @@ export function CaretakerView({
     setIsScanning(true);
     setScannedResult(null);
 
-    // Call API with sample prescription
     try {
       const sampleBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
       const existingMedNames = medications.map((m) => m.name);
@@ -138,7 +156,6 @@ export function CaretakerView({
 
     onAddMedication(med);
     setShowAddMedModal(false);
-    // Reset fields
     setNewMedName('');
     setNewMedDosage('');
     setNewMedPurpose('');
@@ -172,20 +189,19 @@ export function CaretakerView({
   };
 
   return (
-    <div className="space-y-8 pb-12">
-      {/* Hero Banner: Clinical Hub */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-indigo-700 via-blue-700 to-indigo-800 text-white shadow-xl shadow-indigo-600/20 p-6 sm:p-8">
+    <div className="space-y-8 pb-16 max-w-7xl mx-auto">
+      {/* 1. Hero: Caregiver Clinical Hub Banner */}
+      <section className="bg-gradient-to-r from-[#167C80] to-[#105C5F] text-white rounded-3xl p-6 sm:p-8 shadow-xs relative overflow-hidden">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-bold tracking-wide uppercase">
-              <Stethoscope className="w-4 h-4 text-indigo-200" />
-              <span>Caretaker & Clinical Coordinator Portal</span>
-            </div>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 text-xs font-bold uppercase tracking-wider">
+              🩺 Caregiver & Nurse Portal • Clinical Workspace
+            </span>
             <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
               Clinical Regimen & Safety Hub
             </h1>
-            <p className="text-indigo-100 text-base sm:text-lg max-w-xl font-medium">
-              Oversee {senior.name}&apos;s medication schedules, AI optical prescription scans, and doctor appointments.
+            <p className="text-teal-100 text-base sm:text-lg max-w-xl font-medium">
+              Oversee {senior.name}&apos;s medication schedules, AI optical prescription scans, and doctor visits.
             </p>
           </div>
 
@@ -193,15 +209,15 @@ export function CaretakerView({
           <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={() => setShowScannerModal(true)}
-              className="flex items-center gap-2 px-5 py-3.5 rounded-2xl bg-white text-indigo-900 font-extrabold text-sm shadow-md hover:bg-indigo-50 active:scale-95 transition-all"
+              className="flex items-center gap-2 px-5 py-3.5 rounded-2xl bg-white text-[#167C80] font-extrabold text-sm shadow-xs hover:bg-[#F8F7F2] active:scale-95 transition-all"
             >
-              <Camera className="w-5 h-5 text-indigo-600" />
+              <Camera className="w-5 h-5 text-[#167C80]" />
               <span>AI Prescription Scanner</span>
             </button>
 
             <button
               onClick={() => setShowAddMedModal(true)}
-              className="flex items-center gap-2 px-5 py-3.5 rounded-2xl bg-indigo-500 hover:bg-indigo-400 text-white font-bold text-sm shadow-md active:scale-95 transition-all border border-indigo-400"
+              className="flex items-center gap-2 px-5 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm shadow-xs active:scale-95 transition-all border border-white/20"
             >
               <Plus className="w-5 h-5" />
               <span>Add Medication</span>
@@ -209,31 +225,31 @@ export function CaretakerView({
 
             <button
               onClick={() => setShowAddAptModal(true)}
-              className="flex items-center gap-2 px-5 py-3.5 rounded-2xl bg-slate-900/60 hover:bg-slate-900 text-white font-bold text-sm shadow-md active:scale-95 transition-all border border-indigo-400/30"
+              className="flex items-center gap-2 px-5 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm shadow-xs active:scale-95 transition-all border border-white/20"
             >
               <Calendar className="w-5 h-5" />
               <span>Schedule Visit</span>
             </button>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Patient Critical Safety & Allergy Bar */}
-      <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
+      {/* 2. Patient Critical Allergies & Vitals Bar */}
+      <section className="bg-white rounded-3xl border border-[#E6E4DC] p-6 shadow-xs">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center font-bold">
-              <ShieldAlert className="w-7 h-7" />
+            <div className="w-12 h-12 rounded-2xl bg-[#FDF3EF] text-[#D32F2F] flex items-center justify-center font-bold shrink-0">
+              <ShieldAlert className="w-6 h-6" />
             </div>
             <div>
-              <span className="text-xs uppercase font-bold text-slate-400 tracking-wider">
-                Active Allergies & Conditions
+              <span className="text-[11px] uppercase font-bold text-[#546E7A] tracking-wider">
+                Active Allergies & Clinical Profile
               </span>
               <div className="flex flex-wrap items-center gap-2 mt-1">
                 {senior.allergies.map((allergy) => (
                   <span
                     key={allergy}
-                    className="px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-200"
+                    className="px-3 py-1 rounded-full text-xs font-bold bg-[#FDF3EF] text-[#D32F2F] border border-[#F2A58A]"
                   >
                     Allergy: {allergy}
                   </span>
@@ -241,7 +257,7 @@ export function CaretakerView({
                 {senior.chronicConditions.map((cond) => (
                   <span
                     key={cond}
-                    className="px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700"
+                    className="px-3 py-1 rounded-full text-xs font-semibold bg-[#F8F7F2] text-[#263238] border border-[#E6E4DC]"
                   >
                     {cond}
                   </span>
@@ -250,29 +266,68 @@ export function CaretakerView({
             </div>
           </div>
 
-          <div className="text-xs text-slate-500 md:text-right border-t md:border-t-0 md:border-l border-slate-100 pt-3 md:pt-0 md:pl-6">
-            <div>Primary Physician: <strong>{senior.primaryDoctor.name}</strong></div>
-            <div>Emergency Contact: <strong>{senior.emergencyContact.name} ({senior.emergencyContact.phone})</strong></div>
+          <div className="text-xs text-[#546E7A] md:text-right border-t md:border-t-0 md:border-l border-[#E6E4DC] pt-3 md:pt-0 md:pl-6">
+            <div>Primary Doctor: <strong className="text-[#263238]">{senior.primaryDoctor.name}</strong></div>
+            <div>Emergency Proxy: <strong className="text-[#263238]">{senior.emergencyContact.name} ({senior.emergencyContact.phone})</strong></div>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Medication Regimen Management Matrix */}
-      <section className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-md space-y-6">
+      {/* 3. Daily Caregiver Clinical Checklist */}
+      <section className="bg-white rounded-3xl border border-[#E6E4DC] p-6 sm:p-7 shadow-xs space-y-4">
+        <div className="flex items-center justify-between border-b border-[#E6E4DC] pb-3">
+          <h2 className="text-lg font-bold text-[#263238] flex items-center gap-2">
+            <CheckSquare className="w-5 h-5 text-[#167C80]" />
+            <span>Daily Care Checklist (Nurse Elena, RN)</span>
+          </h2>
+          <span className="text-xs font-semibold text-[#167C80] bg-[#E8F3F3] px-3 py-1 rounded-full border border-[#B7D4C2]">
+            {checklist.filter((c) => c.done).length} of {checklist.length} Tasks Complete
+          </span>
+        </div>
+
+        <div className="space-y-2">
+          {checklist.map((item) => (
+            <div
+              key={item.id}
+              onClick={() => toggleChecklistItem(item.id)}
+              className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 text-xs ${
+                item.done
+                  ? 'bg-[#F0F6F2]/70 border-[#B7D4C2] text-[#263238]'
+                  : 'bg-[#F8F7F2] border-[#E6E4DC] text-[#263238] hover:border-[#167C80]'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <span className={item.done ? 'text-[#1B8354]' : 'text-[#546E7A]'}>
+                  {item.done ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+                </span>
+                <span className={item.done ? 'line-through text-[#546E7A]' : 'font-medium'}>
+                  {item.label}
+                </span>
+              </div>
+              <span className="text-[11px] font-semibold text-[#546E7A]">
+                {item.done ? '✓ Done' : 'Pending'}
+              </span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* 4. Active Medication Regimen Matrix */}
+      <section className="bg-white rounded-3xl border border-[#E6E4DC] p-6 sm:p-7 shadow-xs space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 flex items-center gap-2">
-              <Pill className="w-6 h-6 text-indigo-600" />
-              <span>Active Medication Regimen ({medications.length} Prescriptions)</span>
+            <h2 className="text-xl font-bold text-[#263238] flex items-center gap-2">
+              <Pill className="w-5 h-5 text-[#167C80]" />
+              <span>Medication Regimen Matrix ({medications.length} Active Prescriptions)</span>
             </h2>
-            <p className="text-sm text-slate-500">
-              Manage dosages, timings, food requirements, and stock inventory.
+            <p className="text-xs text-[#546E7A]">
+              Oversee dosages, pill inventory, food requirements, and safety warnings.
             </p>
           </div>
 
           <button
             onClick={() => setShowAddMedModal(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold shadow-xs transition-colors"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#167C80] hover:bg-[#126366] text-white text-xs font-bold shadow-xs transition-colors"
           >
             <Plus className="w-4 h-4" />
             <span>Add New Medicine</span>
@@ -283,16 +338,16 @@ export function CaretakerView({
           {medications.map((med) => (
             <div
               key={med.id}
-              className="bg-slate-50 border border-slate-200 rounded-2xl p-5 hover:border-indigo-300 transition-all space-y-4"
+              className="bg-[#F8F7F2] border border-[#E6E4DC] rounded-2xl p-5 hover:border-[#167C80] transition-all space-y-4"
             >
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <h3 className="font-extrabold text-lg text-slate-900">{med.name}</h3>
-                  <p className="text-xs text-indigo-700 font-semibold">{med.purpose}</p>
+                  <h3 className="font-extrabold text-base text-[#263238]">{med.name}</h3>
+                  <p className="text-xs text-[#167C80] font-semibold">{med.purpose}</p>
                 </div>
                 <button
                   onClick={() => onDeleteMedication(med.id)}
-                  className="p-2 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                  className="p-1.5 text-[#546E7A] hover:text-[#D32F2F] rounded-lg hover:bg-white transition-colors"
                   title="Remove Medication"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -300,86 +355,86 @@ export function CaretakerView({
               </div>
 
               <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="bg-white p-2.5 rounded-xl border border-slate-200/60">
-                  <span className="text-slate-400 block font-semibold uppercase text-[10px]">Dosage & Times</span>
-                  <span className="font-bold text-slate-800">{med.dosage}</span>
-                  <span className="text-slate-500 block">At: {med.scheduledTimes.join(', ')}</span>
+                <div className="bg-white p-2.5 rounded-xl border border-[#E6E4DC]">
+                  <span className="text-[#546E7A] block font-bold uppercase text-[10px]">Dosage & Times</span>
+                  <span className="font-bold text-[#263238]">{med.dosage}</span>
+                  <span className="text-[#546E7A] block">At: {med.scheduledTimes.join(', ')}</span>
                 </div>
 
-                <div className="bg-white p-2.5 rounded-xl border border-slate-200/60">
-                  <span className="text-slate-400 block font-semibold uppercase text-[10px]">Food & Form</span>
-                  <span className="font-bold text-slate-800 capitalize">{med.form}</span>
-                  <span className="text-slate-500 block">{med.withFood.replace('_', ' ')}</span>
+                <div className="bg-white p-2.5 rounded-xl border border-[#E6E4DC]">
+                  <span className="text-[#546E7A] block font-bold uppercase text-[10px]">Food & Form</span>
+                  <span className="font-bold text-[#263238] capitalize">{med.form}</span>
+                  <span className="text-[#546E7A] block">{med.withFood.replace('_', ' ')}</span>
                 </div>
               </div>
 
               {med.specialInstructions && (
-                <div className="text-xs bg-amber-50/70 border border-amber-200/60 text-amber-900 p-2.5 rounded-xl">
+                <div className="text-xs bg-[#E8F3F3] border border-[#B7D4C2] text-[#263238] p-2.5 rounded-xl">
                   <strong>Notes:</strong> {med.specialInstructions}
                 </div>
               )}
 
               {/* Safety / Dietary Warnings */}
               {med.dietaryInteractions && med.dietaryInteractions.length > 0 && (
-                <div className="text-xs bg-rose-50 border border-rose-200 text-rose-900 p-2.5 rounded-xl flex items-start gap-1.5">
-                  <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                <div className="text-xs bg-[#FDF3EF] border border-[#F2A58A] text-[#D32F2F] p-2.5 rounded-xl flex items-start gap-1.5">
+                  <AlertTriangle className="w-4 h-4 text-[#D32F2F] shrink-0 mt-0.5" />
                   <div>
                     <strong>Warning:</strong> {med.dietaryInteractions.join(', ')}
                   </div>
                 </div>
               )}
 
-              <div className="flex items-center justify-between text-xs text-slate-500 pt-1 border-t border-slate-200/60">
+              <div className="flex items-center justify-between text-xs text-[#546E7A] pt-1 border-t border-[#E6E4DC]">
                 <span>Prescribed by: {med.prescribedBy}</span>
-                <span className="font-bold text-slate-700">Stock: {med.stockCount} pills</span>
+                <span className="font-bold text-[#263238]">Stock: {med.stockCount} pills</span>
               </div>
             </div>
           ))}
         </div>
       </section>
 
-      {/* Doctor Appointments & Clinic Visits */}
-      <section className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-md space-y-6">
+      {/* 5. Doctor Appointments & Hospital Visits */}
+      <section className="bg-white rounded-3xl border border-[#E6E4DC] p-6 sm:p-7 shadow-xs space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 flex items-center gap-2">
-              <Calendar className="w-6 h-6 text-emerald-600" />
-              <span>Upcoming Medical Appointments & Routines</span>
+            <h2 className="text-xl font-bold text-[#263238] flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-[#167C80]" />
+              <span>Upcoming Doctor Appointments & Routines</span>
             </h2>
-            <p className="text-sm text-slate-500">
-              Coordinated doctor visits with automated preparation reminder dispatch.
+            <p className="text-xs text-[#546E7A]">
+              Coordinated clinic visits with automated email preparation reminder dispatch.
             </p>
           </div>
 
           <button
             onClick={() => setShowAddAptModal(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold shadow-xs transition-colors"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#1B8354] hover:bg-[#156c45] text-white text-xs font-bold shadow-xs transition-colors"
           >
             <Plus className="w-4 h-4" />
-            <span>Add Appointment</span>
+            <span>Schedule Appointment</span>
           </button>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           {appointments.map((apt) => (
             <div
               key={apt.id}
-              className="p-5 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-white transition-all space-y-3"
+              className="p-5 rounded-2xl border border-[#E6E4DC] bg-[#F8F7F2] hover:bg-white transition-all space-y-3"
             >
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900">{apt.doctorName}</h3>
-                  <p className="text-xs font-semibold text-emerald-700">{apt.specialty} • {apt.clinicName}</p>
+                  <h3 className="text-base font-bold text-[#263238]">{apt.doctorName}</h3>
+                  <p className="text-xs font-semibold text-[#167C80]">{apt.specialty} • {apt.clinicName}</p>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800">
+                <div className="flex items-center gap-2">
+                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#E8F3F3] text-[#167C80]">
                     📅 {apt.date} at {apt.time}
                   </span>
 
                   <button
                     onClick={() => onTriggerAppointmentEmail(apt)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#167C80] hover:bg-[#126366] text-white text-xs font-bold transition-colors"
                     title="Send Email Reminder to Family & Senior"
                   >
                     <Send className="w-3.5 h-3.5" />
@@ -388,7 +443,7 @@ export function CaretakerView({
 
                   <button
                     onClick={() => onDeleteAppointment(apt.id)}
-                    className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50"
+                    className="p-1.5 text-[#546E7A] hover:text-[#D32F2F] rounded-lg hover:bg-white"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -396,9 +451,9 @@ export function CaretakerView({
               </div>
 
               {apt.preparationInstructions.length > 0 && (
-                <div className="bg-white p-3 rounded-xl border border-slate-200 text-xs text-slate-700 space-y-1">
-                  <strong className="text-slate-900">Preparation Checklist:</strong>
-                  <ul className="list-disc list-inside text-slate-600 space-y-0.5">
+                <div className="bg-white p-3 rounded-xl border border-[#E6E4DC] text-xs space-y-1">
+                  <strong className="text-[#263238]">Preparation Checklist:</strong>
+                  <ul className="list-disc list-inside text-[#546E7A] space-y-0.5">
                     {apt.preparationInstructions.map((p, idx) => (
                       <li key={idx}>{p}</li>
                     ))}
@@ -412,26 +467,26 @@ export function CaretakerView({
 
       {/* MODAL 1: AI Prescription Scanner */}
       {showScannerModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 space-y-6 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 space-y-6 shadow-2xl max-h-[90vh] overflow-y-auto border border-[#E6E4DC]">
+            <div className="flex items-center justify-between border-b border-[#E6E4DC] pb-4">
               <div className="flex items-center gap-3">
-                <div className="p-3 rounded-2xl bg-indigo-100 text-indigo-700">
+                <div className="p-3 rounded-2xl bg-[#E8F3F3] text-[#167C80]">
                   <Camera className="w-6 h-6" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-slate-900">
+                  <h3 className="text-lg font-bold text-[#263238]">
                     AI Prescription & Pill Bottle Scanner
                   </h3>
-                  <p className="text-xs text-slate-500">
-                    Multimodal Optical Extraction & Drug Interaction Inspector (Gemini API)
+                  <p className="text-xs text-[#546E7A]">
+                    Google Gemini 2.0 Flash Vision OCR & Clinical Interaction Auditor
                   </p>
                 </div>
               </div>
 
               <button
                 onClick={() => setShowScannerModal(false)}
-                className="text-slate-400 hover:text-slate-700 text-lg font-bold p-1"
+                className="text-[#546E7A] hover:text-[#263238] text-lg font-bold p-1"
               >
                 ✕
               </button>
@@ -439,7 +494,7 @@ export function CaretakerView({
 
             {/* Test Sample Triggers */}
             <div className="space-y-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#546E7A]">
                 Choose Sample Clinical Prescription to Scan:
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -447,13 +502,13 @@ export function CaretakerView({
                   type="button"
                   onClick={() => handleSimulateScan('norvasc')}
                   disabled={isScanning}
-                  className="p-4 rounded-2xl border-2 border-indigo-200 bg-indigo-50/50 hover:bg-indigo-100/60 active:scale-95 transition-all text-left group"
+                  className="p-4 rounded-2xl border-2 border-[#B7D4C2] bg-[#E8F3F3]/50 hover:bg-[#E8F3F3] active:scale-95 transition-all text-left group"
                 >
-                  <div className="font-extrabold text-indigo-900 text-sm group-hover:text-indigo-950">
+                  <div className="font-extrabold text-[#167C80] text-sm">
                     📄 Rx Sample: Amlodipine 5mg
                   </div>
-                  <div className="text-xs text-indigo-700 mt-1">
-                    Triggers synergy interaction check with Lisinopril
+                  <div className="text-xs text-[#546E7A] mt-1">
+                    Triggers blood pressure synergy audit with Lisinopril
                   </div>
                 </button>
 
@@ -461,13 +516,13 @@ export function CaretakerView({
                   type="button"
                   onClick={() => handleSimulateScan('amoxil')}
                   disabled={isScanning}
-                  className="p-4 rounded-2xl border-2 border-slate-200 bg-slate-50 hover:bg-slate-100 active:scale-95 transition-all text-left group"
+                  className="p-4 rounded-2xl border-2 border-[#E6E4DC] bg-[#F8F7F2] hover:bg-[#E6E4DC] active:scale-95 transition-all text-left group"
                 >
-                  <div className="font-extrabold text-slate-900 text-sm group-hover:text-slate-950">
+                  <div className="font-extrabold text-[#263238] text-sm">
                     💊 Blister Pack: Amoxicillin 500mg
                   </div>
-                  <div className="text-xs text-slate-500 mt-1">
-                    Antibiotic with allergy warning check
+                  <div className="text-xs text-[#546E7A] mt-1">
+                    Triggers Penicillin cross-allergy alert
                   </div>
                 </button>
               </div>
@@ -475,14 +530,14 @@ export function CaretakerView({
 
             {/* Scanner status */}
             {isScanning && (
-              <div className="p-8 rounded-2xl bg-indigo-50 border border-indigo-200 text-center space-y-3">
-                <div className="inline-block animate-spin text-indigo-600">
+              <div className="p-8 rounded-2xl bg-[#E8F3F3] border border-[#B7D4C2] text-center space-y-3">
+                <div className="inline-block animate-spin text-[#167C80]">
                   <Sparkles className="w-8 h-8" />
                 </div>
-                <div className="font-bold text-indigo-950 text-base">
+                <div className="font-bold text-[#167C80] text-base">
                   Analyzing Prescription with Gemini Multimodal Vision...
                 </div>
-                <p className="text-xs text-indigo-700">
+                <p className="text-xs text-[#546E7A]">
                   Extracting dosage, food contraindications, and auditing drug-drug conflicts.
                 </p>
               </div>
@@ -490,20 +545,20 @@ export function CaretakerView({
 
             {/* Scanned Result Card */}
             {scannedResult && (
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <div className="bg-[#F8F7F2] border border-[#E6E4DC] rounded-2xl p-5 space-y-4">
+                <div className="flex items-center justify-between border-b border-[#E6E4DC] pb-3">
                   <div>
-                    <h4 className="font-extrabold text-lg text-slate-900">
+                    <h4 className="font-extrabold text-lg text-[#263238]">
                       {scannedResult.name} ({scannedResult.dosage})
                     </h4>
-                    <p className="text-xs text-slate-500">Generic: {scannedResult.genericName}</p>
+                    <p className="text-xs text-[#546E7A]">Generic: {scannedResult.genericName}</p>
                   </div>
-                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
-                    ✓ High Confidence Match
+                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#F0F6F2] text-[#1B8354] border border-[#B7D4C2]">
+                    ✓ OCR Match Verified
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="grid grid-cols-2 gap-3 text-xs text-[#263238]">
                   <div><strong>Form:</strong> {scannedResult.form} ({scannedResult.pillColor}, {scannedResult.pillShape})</div>
                   <div><strong>Frequency:</strong> {scannedResult.frequency.replace('_', ' ')}</div>
                   <div><strong>Food Instruction:</strong> {scannedResult.withFood.replace('_', ' ')}</div>
@@ -528,7 +583,7 @@ export function CaretakerView({
                 <button
                   type="button"
                   onClick={handleApplyScannedToForm}
-                  className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-md transition-colors"
+                  className="w-full py-3 rounded-xl bg-[#167C80] hover:bg-[#126366] text-white font-bold text-xs shadow-xs transition-colors"
                 >
                   Load into Medication Form & Review
                 </button>
@@ -540,22 +595,22 @@ export function CaretakerView({
 
       {/* MODAL 2: Add Medication Manual Form */}
       {showAddMedModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 space-y-6 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-              <h3 className="text-xl font-bold text-slate-900">Add New Medication to Regimen</h3>
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto border border-[#E6E4DC]">
+            <div className="flex items-center justify-between border-b border-[#E6E4DC] pb-3">
+              <h3 className="text-lg font-bold text-[#263238]">Add New Medication to Regimen</h3>
               <button
                 onClick={() => setShowAddMedModal(false)}
-                className="text-slate-400 hover:text-slate-700 text-lg font-bold p-1"
+                className="text-[#546E7A] hover:text-[#263238] text-lg font-bold p-1"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleSaveNewMedication} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <form onSubmit={handleSaveNewMedication} className="space-y-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  <label className="block text-[11px] font-bold text-[#546E7A] uppercase mb-1">
                     Medicine Name *
                   </label>
                   <input
@@ -564,12 +619,12 @@ export function CaretakerView({
                     value={newMedName}
                     onChange={(e) => setNewMedName(e.target.value)}
                     placeholder="e.g. Amlodipine"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 border border-[#E6E4DC] rounded-xl text-xs focus:ring-2 focus:ring-[#167C80]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  <label className="block text-[11px] font-bold text-[#546E7A] uppercase mb-1">
                     Dosage *
                   </label>
                   <input
@@ -578,18 +633,18 @@ export function CaretakerView({
                     value={newMedDosage}
                     onChange={(e) => setNewMedDosage(e.target.value)}
                     placeholder="e.g. 5 mg"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 border border-[#E6E4DC] rounded-xl text-xs focus:ring-2 focus:ring-[#167C80]"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Form</label>
+                  <label className="block text-[11px] font-bold text-[#546E7A] uppercase mb-1">Form</label>
                   <select
                     value={newMedForm}
                     onChange={(e) => setNewMedForm(e.target.value as any)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm"
+                    className="w-full px-3 py-2 border border-[#E6E4DC] rounded-xl text-xs"
                   >
                     <option value="pill">Pill / Tablet</option>
                     <option value="capsule">Capsule</option>
@@ -600,33 +655,33 @@ export function CaretakerView({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Pill Color</label>
+                  <label className="block text-[11px] font-bold text-[#546E7A] uppercase mb-1">Pill Color</label>
                   <input
                     type="text"
                     value={newMedColor}
                     onChange={(e) => setNewMedColor(e.target.value)}
                     placeholder="e.g. White"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm"
+                    className="w-full px-3 py-2 border border-[#E6E4DC] rounded-xl text-xs"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Daily Time</label>
+                  <label className="block text-[11px] font-bold text-[#546E7A] uppercase mb-1">Daily Time</label>
                   <input
                     type="time"
                     value={newMedTime}
                     onChange={(e) => setNewMedTime(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm"
+                    className="w-full px-3 py-2 border border-[#E6E4DC] rounded-xl text-xs"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Food Requirement</label>
+                <label className="block text-[11px] font-bold text-[#546E7A] uppercase mb-1">Food Requirement</label>
                 <select
                   value={newMedWithFood}
                   onChange={(e) => setNewMedWithFood(e.target.value as any)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm"
+                  className="w-full px-3 py-2 border border-[#E6E4DC] rounded-xl text-xs"
                 >
                   <option value="with_meal">Take with meal</option>
                   <option value="after_meal">Take after meal</option>
@@ -636,40 +691,40 @@ export function CaretakerView({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Purpose / Indication</label>
+                <label className="block text-[11px] font-bold text-[#546E7A] uppercase mb-1">Purpose / Indication</label>
                 <input
                   type="text"
                   value={newMedPurpose}
                   onChange={(e) => setNewMedPurpose(e.target.value)}
                   placeholder="e.g. Blood pressure management"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm"
+                  className="w-full px-3 py-2 border border-[#E6E4DC] rounded-xl text-xs"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Special Instructions for Arthur</label>
+                <label className="block text-[11px] font-bold text-[#546E7A] uppercase mb-1">Special Instructions for Arthur</label>
                 <input
                   type="text"
                   value={newMedInstructions}
                   onChange={(e) => setNewMedInstructions(e.target.value)}
-                  placeholder="e.g. Take with a full glass of water. Stand up slowly."
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm"
+                  placeholder="e.g. Take with water. Stand up slowly."
+                  className="w-full px-3 py-2 border border-[#E6E4DC] rounded-xl text-xs"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#E6E4DC]">
                 <button
                   type="button"
                   onClick={() => setShowAddMedModal(false)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-sm font-semibold hover:bg-slate-50"
+                  className="px-4 py-2 rounded-xl border border-[#E6E4DC] text-[#546E7A] text-xs font-semibold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold shadow-md"
+                  className="px-5 py-2 rounded-xl bg-[#167C80] hover:bg-[#126366] text-white text-xs font-bold shadow-xs"
                 >
-                  Save to Arthur&apos;s Regimen
+                  Save to Regimen
                 </button>
               </div>
             </form>
@@ -679,82 +734,82 @@ export function CaretakerView({
 
       {/* MODAL 3: Add Appointment Form */}
       {showAddAptModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-6 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-              <h3 className="text-xl font-bold text-slate-900">Schedule Doctor Appointment</h3>
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-5 shadow-2xl border border-[#E6E4DC]">
+            <div className="flex items-center justify-between border-b border-[#E6E4DC] pb-3">
+              <h3 className="text-lg font-bold text-[#263238]">Schedule Doctor Appointment</h3>
               <button
                 onClick={() => setShowAddAptModal(false)}
-                className="text-slate-400 hover:text-slate-700 text-lg font-bold p-1"
+                className="text-[#546E7A] hover:text-[#263238] text-lg font-bold p-1"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleSaveNewAppointment} className="space-y-4">
+            <form onSubmit={handleSaveNewAppointment} className="space-y-3.5">
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Doctor Name *</label>
+                <label className="block text-[11px] font-bold text-[#546E7A] uppercase mb-1">Doctor Name *</label>
                 <input
                   type="text"
                   required
                   value={newDocName}
                   onChange={(e) => setNewDocName(e.target.value)}
                   placeholder="e.g. Dr. Raymond Vance"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm"
+                  className="w-full px-3 py-2 border border-[#E6E4DC] rounded-xl text-xs"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Specialty</label>
+                  <label className="block text-[11px] font-bold text-[#546E7A] uppercase mb-1">Specialty</label>
                   <input
                     type="text"
                     value={newDocSpecialty}
                     onChange={(e) => setNewDocSpecialty(e.target.value)}
                     placeholder="e.g. Cardiology"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm"
+                    className="w-full px-3 py-2 border border-[#E6E4DC] rounded-xl text-xs"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Clinic Name *</label>
+                  <label className="block text-[11px] font-bold text-[#546E7A] uppercase mb-1">Clinic Name *</label>
                   <input
                     type="text"
                     required
                     value={newDocClinic}
                     onChange={(e) => setNewDocClinic(e.target.value)}
                     placeholder="e.g. St. Jude Hospital"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm"
+                    className="w-full px-3 py-2 border border-[#E6E4DC] rounded-xl text-xs"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Date *</label>
+                  <label className="block text-[11px] font-bold text-[#546E7A] uppercase mb-1">Date *</label>
                   <input
                     type="date"
                     required
                     value={newDocDate}
                     onChange={(e) => setNewDocDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm"
+                    className="w-full px-3 py-2 border border-[#E6E4DC] rounded-xl text-xs"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Time *</label>
+                  <label className="block text-[11px] font-bold text-[#546E7A] uppercase mb-1">Time *</label>
                   <input
                     type="time"
                     required
                     value={newDocTime}
                     onChange={(e) => setNewDocTime(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm"
+                    className="w-full px-3 py-2 border border-[#E6E4DC] rounded-xl text-xs"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                <label className="block text-[11px] font-bold text-[#546E7A] uppercase mb-1">
                   Preparation Instructions (separated by semicolon)
                 </label>
                 <textarea
@@ -762,21 +817,21 @@ export function CaretakerView({
                   value={newDocPrep}
                   onChange={(e) => setNewDocPrep(e.target.value)}
                   placeholder="e.g. Fasting 8 hours; Bring blood pressure log"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm"
+                  className="w-full px-3 py-2 border border-[#E6E4DC] rounded-xl text-xs"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#E6E4DC]">
                 <button
                   type="button"
                   onClick={() => setShowAddAptModal(false)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-sm font-semibold"
+                  className="px-4 py-2 rounded-xl border border-[#E6E4DC] text-[#546E7A] text-xs font-semibold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold shadow-md"
+                  className="px-5 py-2 rounded-xl bg-[#1B8354] hover:bg-[#156c45] text-white text-xs font-bold shadow-xs"
                 >
                   Schedule Appointment
                 </button>

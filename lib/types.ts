@@ -109,6 +109,44 @@ export interface DailyWellnessLog {
   notes?: string;
 }
 
+export interface CareCircleMember {
+  id: string;
+  name: string;
+  role: 'senior' | 'family' | 'caregiver' | 'doctor';
+  relation: string;
+  permissions: string[];
+  phone: string;
+  email: string;
+  status: 'active' | 'on_duty' | 'available';
+  recentActivity: string;
+}
+
+export interface CareJournalEntry {
+  id: string;
+  timestamp: string;
+  authorName: string;
+  authorRole: 'senior' | 'family' | 'caregiver' | 'system';
+  category: 'medication' | 'appointment' | 'wellness' | 'alert' | 'note';
+  title: string;
+  description: string;
+}
+
+export interface AIInsight {
+  id: string;
+  type: 'pattern' | 'safety' | 'schedule' | 'suggestion';
+  title: string;
+  message: string;
+  reason: string;
+  severity: 'info' | 'advisory' | 'caution';
+  actionLabel?: string;
+}
+
+export interface ToastMessage {
+  id: string;
+  type: 'success' | 'warning' | 'info';
+  message: string;
+}
+
 export interface CareCircleState {
   senior: SeniorProfile;
   medications: Medication[];
@@ -116,4 +154,7 @@ export interface CareCircleState {
   appointments: DoctorAppointment[];
   alerts: CaregiverAlert[];
   wellnessLogs: DailyWellnessLog[];
+  members?: CareCircleMember[];
+  journal?: CareJournalEntry[];
+  aiInsights?: AIInsight[];
 }

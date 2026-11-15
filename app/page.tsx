@@ -1,26 +1,35 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { CareCircleState, UserRole, Medication, DoctorAppointment, CaregiverAlert } from '@/lib/types';
+import { 
+  CareCircleState, UserRole, Medication, DoctorAppointment, 
+  CaregiverAlert, CareJournalEntry, ToastMessage 
+} from '@/lib/types';
 import { getInitialOrSavedState, saveState, resetToSeedData, getSavedRole, saveRole } from '@/lib/storage';
 import { Header } from '@/components/Header';
 import { SeniorView } from '@/components/SeniorView';
 import { FamilyView } from '@/components/FamilyView';
 import { CaretakerView } from '@/components/CaretakerView';
+import { LandingPage } from '@/components/LandingPage';
 import { EmailPreviewModal, EmailModalData } from '@/components/EmailPreviewModal';
 import { AlertsDrawer } from '@/components/AlertsDrawer';
 import { EmergencySOSModal } from '@/components/EmergencySOSModal';
 import { PasscodeModal } from '@/components/PasscodeModal';
+import { Toast } from '@/components/Toast';
 
 export default function Home() {
   const [state, setState] = useState<CareCircleState | null>(null);
   const [role, setRole] = useState<UserRole>('elderly');
   const [fontSize, setFontSize] = useState<'normal' | 'large' | 'xlarge'>('normal');
+  const [highContrast, setHighContrast] = useState(false);
   const [isPasscodeUnlocked, setIsPasscodeUnlocked] = useState(true);
+  const [showLandingPage, setShowLandingPage] = useState(false);
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   // Modal states
   const [alertsOpen, setAlertsOpen] = useState(false);
   const [sosModalOpen, setSosModalOpen] = useState(false);
+  const [passcodeModalOpen, setPasscodeModalOpen] = useState(false);
   const [emailModalData, setEmailModalData] = useState<EmailModalData | null>(null);
 
   // Initialize state from storage / seedData
@@ -31,6 +40,18 @@ export default function Home() {
     setRole(savedRole);
   }, []);
 
+  const addToast = (message: string, type: 'success' | 'warning' | 'info' = 'success') => {
+    const id = `toast_${Date.now()}_${Math.random()}`;
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 4000);
+  };
+
+  const removeToast = (id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
+
   // Update storage whenever state changes
   const updateAndSaveState = (newState: CareCircleState) => {
     setState(newState);
@@ -40,18 +61,32 @@ export default function Home() {
   const handleRoleChange = (newRole: UserRole) => {
     setRole(newRole);
     saveRole(newRole);
+    addToast(`Switched to ${newRole.toUpperCase()} experience`, 'info');
   };
 
   const handleToggleFontSize = () => {
-    if (fontSize === 'normal') setFontSize('large');
-    else if (fontSize === 'large') setFontSize('xlarge');
-    else setFontSize('normal');
+    if (fontSize === 'normal') {
+      setFontSize('large');
+      addToast('Font size: Large (Senior Accessibility)', 'info');
+    } else if (fontSize === 'large') {
+      setFontSize('xlarge');
+      addToast('Font size: Extra Large', 'info');
+    } else {
+      setFontSize('normal');
+      addToast('Font size: Standard', 'info');
+    }
+  };
+
+  const handleToggleHighContrast = () => {
+    setHighContrast(!highContrast);
+    addToast(`High Contrast Mode: ${!highContrast ? 'ON' : 'OFF'}`, 'info');
   };
 
   const handleResetData = () => {
     if (confirm('Reset Arthur Pendelton’s Care Circle demo data back to default initial state?')) {
       const reset = resetToSeedData();
       setState(reset);
+      addToast('Demo data reset to initial state', 'success');
     }
   };
 
@@ -74,24 +109,38 @@ export default function Home() {
       return log;
     });
 
-    // Create an alert event in feed
+    // Feed alert
     const newAlert: CaregiverAlert = {
       id: `alt_${Date.now()}`,
       type: 'missed_dose',
       severity: 'low',
       title: `Medication Confirmed: ${targetLog?.medicationName || 'Scheduled Dose'}`,
-      message: `${state.senior.preferredName} successfully confirmed taking ${targetLog?.medicationName} (${targetLog?.dosage}).`,
+      message: `${state.senior.preferredName} confirmed taking ${targetLog?.medicationName} (${targetLog?.dosage}).`,
       timestamp: nowIso,
       recipientEmail: state.senior.emergencyContact.email,
       delivered: true,
       acknowledged: true,
     };
 
+    // Journal Entry
+    const newJournal: CareJournalEntry = {
+      id: `jnl_${Date.now()}`,
+      timestamp: nowIso,
+      authorName: role === 'elderly' ? state.senior.preferredName : 'Caregiver',
+      authorRole: role === 'elderly' ? 'senior' : 'caregiver',
+      category: 'medication',
+      title: `${targetLog?.medicationName || 'Medication'} Taken`,
+      description: `Confirmed taking scheduled dose (${targetLog?.dosage}) at ${new Date(nowIso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`,
+    };
+
     updateAndSaveState({
       ...state,
       doseLogs: updatedLogs,
       alerts: [newAlert, ...state.alerts],
+      journal: [newJournal, ...(state.journal || [])],
     });
+
+    addToast(`Confirmed: ${targetLog?.medicationName} taken!`, 'success');
   };
 
   const handleSnoozeDose = (logId: string) => {
@@ -111,6 +160,7 @@ export default function Home() {
       ...state,
       doseLogs: updatedLogs,
     });
+    addToast('Medication snoozed for 15 minutes', 'warning');
   };
 
   const handleLogWellness = (mood: 'thriving' | 'good' | 'tired' | 'unwell', pain: number) => {
@@ -127,10 +177,44 @@ export default function Home() {
       notes: `Senior self-check: Mood is ${mood}, pain scale is ${pain}/10.`,
     };
 
+    const newJournal: CareJournalEntry = {
+      id: `jnl_${Date.now()}`,
+      timestamp: now.toISOString(),
+      authorName: state.senior.preferredName,
+      authorRole: 'senior',
+      category: 'wellness',
+      title: 'Daily Wellness Check-in',
+      description: `Arthur reported feeling ${mood} with pain scale ${pain}/10.`,
+    };
+
     updateAndSaveState({
       ...state,
       wellnessLogs: [newLog, ...state.wellnessLogs],
+      journal: [newJournal, ...(state.journal || [])],
     });
+
+    addToast('Wellness status logged to family feed!', 'success');
+  };
+
+  const handleAddJournalNote = (note: string) => {
+    if (!state) return;
+    const authorName = role === 'elderly' ? state.senior.preferredName : role === 'family' ? 'Sarah' : 'Nurse Elena';
+    const newJournal: CareJournalEntry = {
+      id: `jnl_${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      authorName,
+      authorRole: role === 'elderly' ? 'senior' : role === 'family' ? 'family' : 'caregiver',
+      category: 'note',
+      title: 'Care Circle Note',
+      description: note,
+    };
+
+    updateAndSaveState({
+      ...state,
+      journal: [newJournal, ...(state.journal || [])],
+    });
+
+    addToast('Note saved to Care Journal', 'success');
   };
 
   // Dispatch Email Notification (Proactive System)
@@ -186,7 +270,7 @@ export default function Home() {
           timestamp: data.timestamp,
         });
 
-        // Add to alert list
+        // Add alert
         const newAlert: CaregiverAlert = {
           id: `alt_${Date.now()}`,
           type,
@@ -203,9 +287,12 @@ export default function Home() {
           ...state,
           alerts: [newAlert, ...state.alerts],
         });
+
+        addToast(`Proactive email dispatched to ${recipient}`, 'success');
       }
     } catch (err) {
       console.error('Failed to trigger email:', err);
+      addToast('Failed to dispatch notification', 'warning');
     }
   };
 
@@ -227,6 +314,8 @@ export default function Home() {
       medications: [med, ...state.medications],
       doseLogs: [...state.doseLogs, ...newLogs],
     });
+
+    addToast(`Added ${med.name} (${med.dosage}) to regimen`, 'success');
   };
 
   const handleDeleteMedication = (id: string) => {
@@ -236,6 +325,7 @@ export default function Home() {
       medications: state.medications.filter((m) => m.id !== id),
       doseLogs: state.doseLogs.filter((d) => d.medicationId !== id),
     });
+    addToast('Medication removed from regimen', 'info');
   };
 
   const handleAddAppointment = (apt: DoctorAppointment) => {
@@ -244,6 +334,7 @@ export default function Home() {
       ...state,
       appointments: [apt, ...state.appointments],
     });
+    addToast(`Scheduled visit with ${apt.doctorName}`, 'success');
   };
 
   const handleDeleteAppointment = (id: string) => {
@@ -252,22 +343,49 @@ export default function Home() {
       ...state,
       appointments: state.appointments.filter((a) => a.id !== id),
     });
+    addToast('Appointment removed', 'info');
   };
 
   const handleConfirmSOS = () => {
     setSosModalOpen(false);
     handleTriggerEmail('emergency_sos', {
-      notes: 'Patient pressed One-Tap Emergency Assistance beacon.',
+      notes: 'Patient activated One-Tap Emergency Assistance beacon.',
     });
   };
 
   if (!state) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-slate-500 font-bold animate-pulse text-lg">
-          Loading CareNest AI Ecosystem...
+      <div className="min-h-screen bg-[#F8F7F2] flex items-center justify-center">
+        <div className="text-[#167C80] font-bold animate-pulse text-lg">
+          Loading CareNest Healthcare Ecosystem...
         </div>
       </div>
+    );
+  }
+
+  // Render Landing Page if active
+  if (showLandingPage) {
+    return (
+      <>
+        <LandingPage
+          onGetStarted={() => setPasscodeModalOpen(true)}
+          onExploreDemo={() => {
+            setShowLandingPage(false);
+            setIsPasscodeUnlocked(true);
+          }}
+        />
+        <PasscodeModal
+          isOpen={passcodeModalOpen}
+          expectedPasscode={state.senior.circleCode}
+          onSuccess={(selectedRole) => {
+            setPasscodeModalOpen(false);
+            setShowLandingPage(false);
+            setIsPasscodeUnlocked(true);
+            handleRoleChange(selectedRole);
+          }}
+          onClose={() => setPasscodeModalOpen(false)}
+        />
+      </>
     );
   }
 
@@ -275,7 +393,11 @@ export default function Home() {
     fontSize === 'xlarge' ? 'text-xl' : fontSize === 'large' ? 'text-lg' : 'text-base';
 
   return (
-    <div className={`min-h-screen bg-slate-100/60 font-sans text-slate-900 ${fontSizeClass}`}>
+    <div
+      className={`min-h-screen bg-[#F8F7F2] font-sans text-[#263238] transition-colors ${fontSizeClass} ${
+        highContrast ? 'high-contrast' : ''
+      }`}
+    >
       {/* Header Bar */}
       <Header
         senior={state.senior}
@@ -286,6 +408,9 @@ export default function Home() {
         onResetData={handleResetData}
         fontSize={fontSize}
         onToggleFontSize={handleToggleFontSize}
+        highContrast={highContrast}
+        onToggleHighContrast={handleToggleHighContrast}
+        onViewLandingPage={() => setShowLandingPage(true)}
       />
 
       {/* Main Content Area */}
@@ -295,6 +420,7 @@ export default function Home() {
             senior={state.senior}
             medications={state.medications}
             doseLogs={state.doseLogs}
+            appointments={state.appointments}
             wellnessLogs={state.wellnessLogs}
             onMarkDoseTaken={handleMarkDoseTaken}
             onSnoozeDose={handleSnoozeDose}
@@ -311,7 +437,11 @@ export default function Home() {
             appointments={state.appointments}
             wellnessLogs={state.wellnessLogs}
             alerts={state.alerts}
+            members={state.members || []}
+            journal={state.journal || []}
+            aiInsights={state.aiInsights || []}
             onTriggerEmailSimulation={handleTriggerEmail}
+            onAddJournalNote={handleAddJournalNote}
           />
         )}
 
@@ -321,6 +451,7 @@ export default function Home() {
             medications={state.medications}
             appointments={state.appointments}
             doseLogs={state.doseLogs}
+            journal={state.journal || []}
             onAddMedication={handleAddMedication}
             onUpdateMedication={() => {}}
             onDeleteMedication={handleDeleteMedication}
@@ -335,11 +466,12 @@ export default function Home() {
                 prepInstructions: apt.preparationInstructions,
               })
             }
+            onAddJournalNote={handleAddJournalNote}
           />
         )}
       </main>
 
-      {/* Passcode Modal (Can be toggled or used on entry) */}
+      {/* Passcode Modal (Can be triggered whenever needed) */}
       <PasscodeModal
         isOpen={!isPasscodeUnlocked}
         expectedPasscode={state.senior.circleCode}
@@ -357,6 +489,7 @@ export default function Home() {
         onAcknowledgeAlert={(alertId) => {
           const updated = state.alerts.map((a) => (a.id === alertId ? { ...a, acknowledged: true } : a));
           updateAndSaveState({ ...state, alerts: updated });
+          addToast('Notification acknowledged', 'info');
         }}
       />
 
@@ -373,6 +506,9 @@ export default function Home() {
         senior={state.senior}
         onConfirmSOS={handleConfirmSOS}
       />
+
+      {/* Toast Notification Container */}
+      <Toast toasts={toasts} onDismiss={removeToast} />
     </div>
   );
 }

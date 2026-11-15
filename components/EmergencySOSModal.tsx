@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { SeniorProfile } from '@/lib/types';
-import { ShieldAlert, PhoneCall, AlertTriangle, X } from 'lucide-react';
+import { ShieldAlert, X } from 'lucide-react';
 
 interface EmergencySOSModalProps {
   isOpen: boolean;
@@ -37,24 +37,24 @@ export function EmergencySOSModal({ isOpen, onClose, senior, onConfirmSOS }: Eme
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-red-950/80 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-6 shadow-2xl text-center border-4 border-red-600 animate-in zoom-in-95 duration-200">
-        <div className="w-20 h-20 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto shadow-inner animate-pulse">
+    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
+      <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-6 shadow-2xl text-center border-4 border-[#D32F2F] animate-in zoom-in-95 duration-200">
+        <div className="w-20 h-20 rounded-full bg-[#FDF3EF] text-[#D32F2F] flex items-center justify-center mx-auto shadow-inner animate-pulse">
           <ShieldAlert className="w-12 h-12" />
         </div>
 
         <div className="space-y-2">
-          <h2 className="text-3xl font-black text-red-600">EMERGENCY ASSISTANCE</h2>
-          <p className="text-base font-semibold text-slate-700">
+          <h2 className="text-3xl font-black text-[#D32F2F]">EMERGENCY ASSISTANCE</h2>
+          <p className="text-base font-semibold text-[#263238]">
             Broadcasting emergency distress alert to {senior.emergencyContact.name} ({senior.emergencyContact.phone}).
           </p>
         </div>
 
-        <div className="p-4 rounded-2xl bg-red-50 border border-red-200 text-red-900 font-extrabold text-lg">
+        <div className="p-4 rounded-2xl bg-[#FDF3EF] border border-[#F2A58A] text-[#D32F2F] font-extrabold text-base">
           {countdown > 0 ? (
-            <span>Auto-dispatching in <strong className="text-2xl text-red-600">{countdown}</strong> seconds...</span>
+            <span>Auto-dispatching in <strong className="text-2xl text-[#D32F2F]">{countdown}</strong> seconds...</span>
           ) : (
-            <span>🚨 SOS Broadcast Dispatched!</span>
+            <span>🚨 SOS Distress Beacon Dispatched!</span>
           )}
         </div>
 
@@ -63,14 +63,14 @@ export function EmergencySOSModal({ isOpen, onClose, senior, onConfirmSOS }: Eme
             onClick={() => {
               onConfirmSOS();
             }}
-            className="flex-1 py-4 px-6 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-extrabold text-lg shadow-lg shadow-red-600/30 active:scale-95 transition-all"
+            className="flex-1 py-4 px-6 rounded-2xl bg-[#D32F2F] hover:bg-red-700 text-white font-extrabold text-base shadow-sm active:scale-95 transition-all"
           >
             DISPATCH NOW
           </button>
 
           <button
             onClick={onClose}
-            className="py-4 px-6 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-base transition-colors"
+            className="py-4 px-6 rounded-2xl bg-[#F8F7F2] hover:bg-[#E6E4DC] text-[#263238] font-bold text-base transition-colors"
           >
             Cancel / False Alarm
           </button>
