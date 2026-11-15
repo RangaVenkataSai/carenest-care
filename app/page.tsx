@@ -16,6 +16,7 @@ import { AlertsDrawer } from '@/components/AlertsDrawer';
 import { EmergencySOSModal } from '@/components/EmergencySOSModal';
 import { PasscodeModal } from '@/components/PasscodeModal';
 import { Toast } from '@/components/Toast';
+import { ProactiveEmailEngineModal } from '@/components/ProactiveEmailEngineModal';
 
 export default function Home() {
   const [state, setState] = useState<CareCircleState | null>(null);
@@ -30,6 +31,7 @@ export default function Home() {
   const [alertsOpen, setAlertsOpen] = useState(false);
   const [sosModalOpen, setSosModalOpen] = useState(false);
   const [passcodeModalOpen, setPasscodeModalOpen] = useState(false);
+  const [emailEngineOpen, setEmailEngineOpen] = useState(false);
   const [emailModalData, setEmailModalData] = useState<EmailModalData | null>(null);
 
   // Initialize state from storage / seedData
@@ -230,12 +232,13 @@ export default function Home() {
       appointmentTime?: string;
       prepInstructions?: string[];
       notes?: string;
-    }
+    },
+    customRecipient?: string
   ) => {
     if (!state) return;
 
-    const recipient = state.senior.emergencyContact.email;
-    const recipientName = state.senior.emergencyContact.name;
+    const recipient = customRecipient || state.senior.emergencyContact.email;
+    const recipientName = customRecipient ? 'Authorized Care Member' : state.senior.emergencyContact.name;
 
     try {
       const res = await fetch('/api/notifications/email', {
@@ -455,6 +458,7 @@ export default function Home() {
         highContrast={highContrast}
         onToggleHighContrast={handleToggleHighContrast}
         onViewLandingPage={() => setShowLandingPage(true)}
+        onOpenEmailHub={() => setEmailEngineOpen(true)}
       />
 
       {/* Main Content Area */}
@@ -550,6 +554,17 @@ export default function Home() {
       <EmailPreviewModal
         data={emailModalData}
         onClose={() => setEmailModalData(null)}
+      />
+
+      {/* Proactive Email Engine Hub Modal */}
+      <ProactiveEmailEngineModal
+        isOpen={emailEngineOpen}
+        onClose={() => setEmailEngineOpen(false)}
+        defaultRecipient={state.senior.emergencyContact.email}
+        seniorName={state.senior.name}
+        onTriggerEmail={(type, customRecipient, details) =>
+          handleTriggerEmail(type, details, customRecipient)
+        }
       />
 
       {/* Emergency SOS Modal */}

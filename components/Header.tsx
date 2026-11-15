@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { UserRole, SeniorProfile, CaregiverAlert } from '@/lib/types';
-import { Shield, Heart, Stethoscope, User, Bell, RefreshCw, KeyRound, Type, Eye, Home } from 'lucide-react';
+import { Shield, Heart, Stethoscope, User, Bell, RefreshCw, KeyRound, Type, Eye, Home, Mail } from 'lucide-react';
 
 interface HeaderProps {
   senior: SeniorProfile;
@@ -16,6 +16,7 @@ interface HeaderProps {
   highContrast: boolean;
   onToggleHighContrast: () => void;
   onViewLandingPage?: () => void;
+  onOpenEmailHub?: () => void;
 }
 
 export function Header({
@@ -30,6 +31,7 @@ export function Header({
   highContrast,
   onToggleHighContrast,
   onViewLandingPage,
+  onOpenEmailHub,
 }: HeaderProps) {
   const unreadAlertsCount = alerts.filter((a) => !a.acknowledged).length;
 
@@ -129,6 +131,18 @@ export function Header({
             >
               <Type className="w-4 h-4" />
             </button>
+
+            {/* Proactive Email Engine Hub */}
+            {onOpenEmailHub && (
+              <button
+                onClick={onOpenEmailHub}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-[#167C80] bg-[#E8F3F3] hover:bg-[#d8eaea] rounded-xl border border-[#B7D4C2] transition-colors shadow-2xs"
+                title="Proactive Email Engine Hub (Hackathon Requirement)"
+              >
+                <Mail className="w-3.5 h-3.5" />
+                <span>Email Engine</span>
+              </button>
+            )}
 
             {/* Notification Center */}
             <button
