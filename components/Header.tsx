@@ -39,14 +39,14 @@ export function Header({
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-extrabold text-xl sm:text-2xl tracking-tight text-slate-900">
-                  Sentinel<span className="text-blue-600">Care</span>
+                  Care<span className="text-blue-600">Nest</span>
                 </span>
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
                   AI Guardian
                 </span>
               </div>
               <p className="text-xs text-slate-500 hidden sm:block">
-                Interconnected Geriatric Medication & Care Ecosystem
+                Interconnected Elderly Care & Medication Management Platform
               </p>
             </div>
           </div>

@@ -3,16 +3,16 @@
 import { CareCircleState, Medication, MedicationDoseLog, DoctorAppointment, CaregiverAlert, DailyWellnessLog, UserRole } from './types';
 import { INITIAL_STATE } from './seedData';
 
-const STORAGE_KEY = 'sentinelcare_state_v1';
-const ROLE_KEY = 'sentinelcare_current_role_v1';
-const AUTH_KEY = 'sentinelcare_auth_token_v1';
+const STORAGE_KEY = 'carenest_state_v1';
+const ROLE_KEY = 'carenest_current_role_v1';
+const AUTH_KEY = 'carenest_auth_token_v1';
 
 export function getInitialOrSavedState(): CareCircleState {
   if (typeof window === 'undefined') {
     return INITIAL_STATE;
   }
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('sentinelcare_state_v1');
     if (saved) {
       return JSON.parse(saved);
     }

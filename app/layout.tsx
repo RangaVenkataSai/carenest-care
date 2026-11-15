@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'SentinelCare AI — Intelligent Elderly Care & Medication Guardian',
+  title: 'CareNest — Intelligent Elderly Care & Medication Guardian',
   description:
     'An interconnected geriatric healthcare management ecosystem empowering elderly autonomy, family peace-of-mind, and clinical caregiver safety with AI multimodal prescription scanning and proactive email escalation.',
 };

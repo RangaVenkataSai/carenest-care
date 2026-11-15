@@ -1,4 +1,4 @@
-# SentinelCare AI — Intelligent Elderly Care & Medication Guardian
+# CareNest — Intelligent Elderly Care & Medication Guardian
 
 > **Catalyst 2026 Solo AI Hackathon Submission**  
 > *Track: Elderly Care & Medication Management Platform*  
@@ -10,7 +10,7 @@
 
 Elderly healthcare management is plagued by dangerous medication non-adherence, accidental double-dosing, and fragmented communication between seniors, family members, and clinical caregivers.
 
-**SentinelCare AI** solves this with an interconnected healthcare ecosystem that:
+**CareNest** solves this with an interconnected healthcare ecosystem that:
 1. **Puts the Senior at the Center of Care:** A barrier-free interface with high contrast, large touch targets, built-in **Web Speech Voice Guidance**, one-tap dose logging with positive reinforcement, and a dedicated Emergency SOS beacon.
 2. **Gives Family Real-Time Peace of Mind:** Real-time compliance score (%), live caregiver activity feed, and autonomous email escalation only when attention is actually required—ending the stressful cycle of daily nagging.
 3. **Equips Caretakers with Clinical AI Safety:** An **AI Prescription & Pill Bottle Scanner** powered by **Google Gemini Multimodal Vision** that automatically extracts dosages, food caveats, and audits active prescriptions for life-threatening drug-drug interactions.
@@ -45,7 +45,7 @@ flowchart TD
 
 ## 🎯 Innovation: Beyond a Basic Reminder App
 
-| Feature | Conventional Reminder Apps | **SentinelCare AI** |
+| Feature | Conventional Reminder Apps | **CareNest** |
 | :--- | :--- | :--- |
 | **Prescription Entry** | Tedious manual form filling prone to typos. | **Gemini Multimodal Vision OCR**: Snap a photo or choose a sample Rx; auto-populates drug, dosage, frequency, and instructions. |
 | **Drug Interaction Safety** | No conflict detection. | **Clinical Safety Auditor**: Cross-checks new prescriptions against active medications to flag adverse synergies (e.g., Amlodipine + Lisinopril hypotension). |
@@ -101,7 +101,7 @@ flowchart TD
 ### 1. Clone & Install
 ```bash
 git clone <your-repo-url>
-cd sentinelcare-ai
+cd carenest
 npm install
 ```
 
@@ -115,7 +115,7 @@ Add your optional Google Gemini API key:
 GEMINI_API_KEY=your_gemini_api_key_here
 RESEND_API_KEY=your_resend_api_key_here
 ```
-*(Note: If omitted, SentinelCare AI automatically activates its clinical intelligence fallback engine, ensuring judges can evaluate 100% of the functionality without configuring keys).*
+*(Note: If omitted, CareNest automatically activates its clinical intelligence fallback engine, ensuring judges can evaluate 100% of the functionality without configuring keys).*
 
 ### 3. Run Development Server
 ```bash
