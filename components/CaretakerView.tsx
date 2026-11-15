@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { ParsedMedicationResult } from '@/lib/gemini';
 import { EditMedicationModal } from './EditMedicationModal';
+import { EditAppointmentModal } from './EditAppointmentModal';
 
 interface CaretakerViewProps {
   senior: SeniorProfile;
@@ -19,6 +20,7 @@ interface CaretakerViewProps {
   onUpdateMedication: (med: Medication) => void;
   onDeleteMedication: (id: string) => void;
   onAddAppointment: (apt: DoctorAppointment) => void;
+  onUpdateAppointment: (apt: DoctorAppointment) => void;
   onDeleteAppointment: (id: string) => void;
   onTriggerAppointmentEmail: (apt: DoctorAppointment) => void;
   onAddJournalNote?: (note: string) => void;
@@ -34,6 +36,7 @@ export function CaretakerView({
   onUpdateMedication,
   onDeleteMedication,
   onAddAppointment,
+  onUpdateAppointment,
   onDeleteAppointment,
   onTriggerAppointmentEmail,
   onAddJournalNote,
@@ -43,6 +46,7 @@ export function CaretakerView({
   const [showScannerModal, setShowScannerModal] = useState(false);
   const [showAddAptModal, setShowAddAptModal] = useState(false);
   const [editingMedication, setEditingMedication] = useState<Medication | null>(null);
+  const [editingAppointment, setEditingAppointment] = useState<DoctorAppointment | null>(null);
 
   // Daily Care Checklist state
   const [checklist, setChecklist] = useState<{ id: string; label: string; done: boolean }[]>([
@@ -453,6 +457,14 @@ export function CaretakerView({
                   </button>
 
                   <button
+                    onClick={() => setEditingAppointment(apt)}
+                    className="p-1.5 text-[#546E7A] hover:text-[#167C80] rounded-lg hover:bg-white"
+                    title="Edit Appointment"
+                  >
+                    <Edit3 className="w-4 h-4" />
+                  </button>
+
+                  <button
                     onClick={() => onDeleteAppointment(apt.id)}
                     className="p-1.5 text-[#546E7A] hover:text-[#D32F2F] rounded-lg hover:bg-white"
                   >
@@ -859,6 +871,17 @@ export function CaretakerView({
         onSave={(updated) => {
           onUpdateMedication(updated);
           setEditingMedication(null);
+        }}
+      />
+
+      {/* MODAL 5: Edit Appointment */}
+      <EditAppointmentModal
+        appointment={editingAppointment}
+        isOpen={Boolean(editingAppointment)}
+        onClose={() => setEditingAppointment(null)}
+        onSave={(updated) => {
+          onUpdateAppointment(updated);
+          setEditingAppointment(null);
         }}
       />
     </div>

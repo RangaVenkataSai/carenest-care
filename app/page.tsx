@@ -371,6 +371,16 @@ export default function Home() {
     addToast(`Scheduled visit with ${apt.doctorName}`, 'success');
   };
 
+  const handleUpdateAppointment = (updated: DoctorAppointment) => {
+    if (!state) return;
+    const updatedApts = state.appointments.map((a) => (a.id === updated.id ? updated : a));
+    updateAndSaveState({
+      ...state,
+      appointments: updatedApts,
+    });
+    addToast(`Updated appointment with ${updated.doctorName}`, 'success');
+  };
+
   const handleDeleteAppointment = (id: string) => {
     if (!state) return;
     updateAndSaveState({
@@ -478,6 +488,12 @@ export default function Home() {
             aiInsights={state.aiInsights || []}
             onTriggerEmailSimulation={handleTriggerEmail}
             onAddJournalNote={handleAddJournalNote}
+            onAddMedication={handleAddMedication}
+            onUpdateMedication={handleUpdateMedication}
+            onDeleteMedication={handleDeleteMedication}
+            onAddAppointment={handleAddAppointment}
+            onUpdateAppointment={handleUpdateAppointment}
+            onDeleteAppointment={handleDeleteAppointment}
           />
         )}
 
@@ -492,6 +508,7 @@ export default function Home() {
             onUpdateMedication={handleUpdateMedication}
             onDeleteMedication={handleDeleteMedication}
             onAddAppointment={handleAddAppointment}
+            onUpdateAppointment={handleUpdateAppointment}
             onDeleteAppointment={handleDeleteAppointment}
             onTriggerAppointmentEmail={(apt) =>
               handleTriggerEmail('doctor_appointment', {
