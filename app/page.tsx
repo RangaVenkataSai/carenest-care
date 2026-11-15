@@ -5,13 +5,18 @@ import {
   CareCircleState, UserRole, Medication, DoctorAppointment, 
   CaregiverAlert, CareJournalEntry, ToastMessage, SeniorProfile 
 } from '@/lib/types';
-import { getInitialOrSavedState, saveState, resetToSeedData, getSavedRole, saveRole, getSavedVoiceLang, saveVoiceLang } from '@/lib/storage';
+import { 
+  getInitialOrSavedState, saveState, resetToSeedData, 
+  getSavedRole, saveRole, getSavedVoiceLang, saveVoiceLang,
+  getIsLoggedIn, saveIsLoggedIn, clearAuthSession 
+} from '@/lib/storage';
 import { VoiceLanguage } from '@/lib/voiceAssistant';
 import { Header } from '@/components/Header';
 import { SeniorView } from '@/components/SeniorView';
 import { FamilyView } from '@/components/FamilyView';
 import { CaretakerView } from '@/components/CaretakerView';
 import { LandingPage } from '@/components/LandingPage';
+import { LoginPage } from '@/components/LoginPage';
 import { EmailPreviewModal, EmailModalData } from '@/components/EmailPreviewModal';
 import { AlertsDrawer } from '@/components/AlertsDrawer';
 import { EmergencySOSModal } from '@/components/EmergencySOSModal';
@@ -27,6 +32,7 @@ export default function Home() {
   const [highContrast, setHighContrast] = useState(false);
   const [voiceLang, setVoiceLang] = useState<VoiceLanguage>('en');
   const [isPasscodeUnlocked, setIsPasscodeUnlocked] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showLandingPage, setShowLandingPage] = useState(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
@@ -43,9 +49,11 @@ export default function Home() {
     const saved = getInitialOrSavedState();
     const savedRole = getSavedRole();
     const savedLang = getSavedVoiceLang();
+    const savedLoggedIn = getIsLoggedIn();
     setState(saved);
     setRole(savedRole);
     setVoiceLang(savedLang);
+    setIsLoggedIn(savedLoggedIn);
   }, []);
 
   const addToast = (message: string, type: 'success' | 'warning' | 'info' = 'success') => {
@@ -70,6 +78,24 @@ export default function Home() {
     setRole(newRole);
     saveRole(newRole);
     addToast(`Switched to ${newRole.toUpperCase()} experience`, 'info');
+  };
+
+  const handleLoginSuccess = (authenticatedRole: UserRole) => {
+    setRole(authenticatedRole);
+    saveRole(authenticatedRole);
+    setIsLoggedIn(true);
+    saveIsLoggedIn(true);
+    setIsPasscodeUnlocked(true);
+    setShowLandingPage(false);
+    const roleLabel = authenticatedRole === 'elderly' ? 'Arthur Pendelton (Senior View)' : authenticatedRole === 'family' ? 'Sarah Pendelton (Family View)' : 'Nurse Elena Vance, RN (Caregiver View)';
+    addToast(`Care Circle Unlocked! Signed in as ${roleLabel}`, 'success');
+  };
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    clearAuthSession();
+    setShowLandingPage(false);
+    addToast('Logged out of Arthur’s Care Circle. Protected healthcare records secured.', 'info');
   };
 
   const handleToggleFontSize = () => {
@@ -452,23 +478,35 @@ export default function Home() {
     return (
       <>
         <LandingPage
-          onGetStarted={() => setPasscodeModalOpen(true)}
+          onGetStarted={() => {
+            setShowLandingPage(false);
+          }}
           onExploreDemo={() => {
-            setShowLandingPage(false);
-            setIsPasscodeUnlocked(true);
+            handleLoginSuccess('elderly');
           }}
         />
-        <PasscodeModal
-          isOpen={passcodeModalOpen}
+        <Toast toasts={toasts} onDismiss={removeToast} />
+      </>
+    );
+  }
+
+  // Render Login Page if not authenticated
+  if (!isLoggedIn) {
+    return (
+      <>
+        <LoginPage
           expectedPasscode={state.senior.circleCode}
-          onSuccess={(selectedRole) => {
-            setPasscodeModalOpen(false);
-            setShowLandingPage(false);
-            setIsPasscodeUnlocked(true);
-            handleRoleChange(selectedRole);
-          }}
-          onClose={() => setPasscodeModalOpen(false)}
+          seniorName={state.senior.name}
+          voiceLang={voiceLang}
+          onVoiceLangChange={handleVoiceLangChange}
+          onLoginSuccess={handleLoginSuccess}
+          onExploreLanding={() => setShowLandingPage(true)}
+          fontSize={fontSize}
+          onToggleFontSize={handleToggleFontSize}
+          highContrast={highContrast}
+          onToggleHighContrast={handleToggleHighContrast}
         />
+        <Toast toasts={toasts} onDismiss={removeToast} />
       </>
     );
   }
@@ -500,6 +538,7 @@ export default function Home() {
         onOpenEmailHub={() => setEmailEngineOpen(true)}
         onOpenProfile={() => setProfileModalOpen(true)}
         onOpenPasscodeModal={() => setPasscodeModalOpen(true)}
+        onLogout={handleLogout}
       />
 
       {/* Main Content Area */}

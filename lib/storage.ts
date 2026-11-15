@@ -8,6 +8,7 @@ const STORAGE_KEY = 'carenest_state_v1';
 const ROLE_KEY = 'carenest_current_role_v1';
 const AUTH_KEY = 'carenest_auth_token_v1';
 const LANG_KEY = 'carenest_voice_lang_v1';
+const LOGGED_IN_KEY = 'carenest_logged_in_v1';
 
 export function getInitialOrSavedState(): CareCircleState {
   if (typeof window === 'undefined') {
@@ -68,4 +69,19 @@ export function getSavedVoiceLang(): VoiceLanguage {
 export function saveVoiceLang(lang: VoiceLanguage): void {
   if (typeof window === 'undefined') return;
   localStorage.setItem(LANG_KEY, lang);
+}
+
+export function getIsLoggedIn(): boolean {
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem(LOGGED_IN_KEY) === 'true';
+}
+
+export function saveIsLoggedIn(loggedIn: boolean): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(LOGGED_IN_KEY, loggedIn ? 'true' : 'false');
+}
+
+export function clearAuthSession(): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(LOGGED_IN_KEY, 'false');
 }

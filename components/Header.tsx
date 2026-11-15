@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { UserRole, SeniorProfile, CaregiverAlert } from '@/lib/types';
-import { Shield, Heart, Stethoscope, User, Bell, RefreshCw, KeyRound, Type, Eye, Home, Mail, Languages } from 'lucide-react';
+import { Shield, Heart, Stethoscope, User, Bell, RefreshCw, KeyRound, Type, Eye, Home, Mail, Languages, LogOut } from 'lucide-react';
 import { VoiceLanguage } from '@/lib/voiceAssistant';
 
 interface HeaderProps {
@@ -22,6 +22,7 @@ interface HeaderProps {
   onOpenEmailHub?: () => void;
   onOpenProfile?: () => void;
   onOpenPasscodeModal?: () => void;
+  onLogout?: () => void;
 }
 
 export function Header({
@@ -41,6 +42,7 @@ export function Header({
   onOpenEmailHub,
   onOpenProfile,
   onOpenPasscodeModal,
+  onLogout,
 }: HeaderProps) {
   const unreadAlertsCount = alerts.filter((a) => !a.acknowledged).length;
 
@@ -240,6 +242,18 @@ export function Header({
               >
                 <Home className="w-3.5 h-3.5" />
                 <span>Landing Page</span>
+              </button>
+            )}
+
+            {/* Log Out / Exit Circle */}
+            {onLogout && (
+              <button
+                onClick={onLogout}
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-[#D32F2F] hover:bg-[#FFEBEE] rounded-xl border border-[#FFCDD2] transition-colors shadow-2xs"
+                title="Exit Arthur's Care Circle & Return to Login Portal"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Log Out</span>
               </button>
             )}
 
