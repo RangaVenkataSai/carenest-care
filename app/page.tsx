@@ -328,6 +328,40 @@ export default function Home() {
     addToast('Medication removed from regimen', 'info');
   };
 
+  const handleUpdateMedication = (updated: Medication) => {
+    if (!state) return;
+    const updatedMeds = state.medications.map((m) => (m.id === updated.id ? updated : m));
+    
+    // Patient Centered Consent Notice
+    const newNotice = {
+      id: `upd_${Date.now()}`,
+      title: `Schedule Update: ${updated.name}`,
+      description: `Dosage is now ${updated.dosage}, scheduled at ${updated.scheduledTimes.join(', ')} (${updated.withFood.replace('_', ' ')}).`,
+      updatedBy: role === 'caretaker' ? 'Nurse Elena Vance, RN' : 'Sarah (Daughter)',
+      timestamp: new Date().toISOString(),
+      status: 'pending_review' as const,
+    };
+
+    updateAndSaveState({
+      ...state,
+      medications: updatedMeds,
+      careUpdates: [newNotice, ...(state.careUpdates || [])],
+    });
+    addToast(`Updated schedule for ${updated.name}`, 'success');
+  };
+
+  const handleAcknowledgeCareUpdate = (updateId: string) => {
+    if (!state) return;
+    const updated = (state.careUpdates || []).map((u) =>
+      u.id === updateId ? { ...u, status: 'acknowledged' as const } : u
+    );
+    updateAndSaveState({
+      ...state,
+      careUpdates: updated,
+    });
+    addToast('Schedule update approved by patient', 'success');
+  };
+
   const handleAddAppointment = (apt: DoctorAppointment) => {
     if (!state) return;
     updateAndSaveState({
@@ -422,10 +456,12 @@ export default function Home() {
             doseLogs={state.doseLogs}
             appointments={state.appointments}
             wellnessLogs={state.wellnessLogs}
+            careUpdates={state.careUpdates || []}
             onMarkDoseTaken={handleMarkDoseTaken}
             onSnoozeDose={handleSnoozeDose}
             onLogWellness={handleLogWellness}
             onTriggerSOS={() => setSosModalOpen(true)}
+            onAcknowledgeCareUpdate={handleAcknowledgeCareUpdate}
           />
         )}
 
@@ -453,7 +489,7 @@ export default function Home() {
             doseLogs={state.doseLogs}
             journal={state.journal || []}
             onAddMedication={handleAddMedication}
-            onUpdateMedication={() => {}}
+            onUpdateMedication={handleUpdateMedication}
             onDeleteMedication={handleDeleteMedication}
             onAddAppointment={handleAddAppointment}
             onDeleteAppointment={handleDeleteAppointment}

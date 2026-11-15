@@ -147,6 +147,15 @@ export interface ToastMessage {
   message: string;
 }
 
+export interface CareUpdateNotice {
+  id: string;
+  title: string;
+  description: string;
+  updatedBy: string;
+  timestamp: string;
+  status: 'pending_review' | 'acknowledged';
+}
+
 export interface CareCircleState {
   senior: SeniorProfile;
   medications: Medication[];
@@ -157,4 +166,5 @@ export interface CareCircleState {
   members?: CareCircleMember[];
   journal?: CareJournalEntry[];
   aiInsights?: AIInsight[];
+  careUpdates?: CareUpdateNotice[];
 }

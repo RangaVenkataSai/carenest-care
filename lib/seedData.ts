@@ -362,4 +362,14 @@ export const INITIAL_STATE: CareCircleState = {
       actionLabel: 'Set Prep Alarm',
     },
   ],
+  careUpdates: [
+    {
+      id: 'upd_01',
+      title: 'Regimen Update: Morning Lisinopril Timing',
+      description: 'Nurse Elena verified with Dr. Vance to schedule your Lisinopril strictly at 8:00 AM right after your oatmeal breakfast for optimal 24-hour blood pressure stability.',
+      updatedBy: 'Nurse Elena Vance, RN',
+      timestamp: new Date(Date.now() - 5 * 3600 * 1000).toISOString(),
+      status: 'pending_review',
+    },
+  ],
 };

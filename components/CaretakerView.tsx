@@ -4,9 +4,10 @@ import React, { useState } from 'react';
 import { SeniorProfile, Medication, DoctorAppointment, MedicationDoseLog, CareJournalEntry } from '@/lib/types';
 import { 
   Stethoscope, Plus, Camera, AlertCircle, Calendar, Trash2, 
-  Sparkles, ShieldAlert, Pill, Clock, AlertTriangle, Send, CheckSquare, Square
+  Sparkles, ShieldAlert, Pill, Clock, AlertTriangle, Send, CheckSquare, Square, Edit3
 } from 'lucide-react';
 import { ParsedMedicationResult } from '@/lib/gemini';
+import { EditMedicationModal } from './EditMedicationModal';
 
 interface CaretakerViewProps {
   senior: SeniorProfile;
@@ -41,6 +42,7 @@ export function CaretakerView({
   const [showAddMedModal, setShowAddMedModal] = useState(false);
   const [showScannerModal, setShowScannerModal] = useState(false);
   const [showAddAptModal, setShowAddAptModal] = useState(false);
+  const [editingMedication, setEditingMedication] = useState<Medication | null>(null);
 
   // Daily Care Checklist state
   const [checklist, setChecklist] = useState<{ id: string; label: string; done: boolean }[]>([
@@ -345,13 +347,22 @@ export function CaretakerView({
                   <h3 className="font-extrabold text-base text-[#263238]">{med.name}</h3>
                   <p className="text-xs text-[#167C80] font-semibold">{med.purpose}</p>
                 </div>
-                <button
-                  onClick={() => onDeleteMedication(med.id)}
-                  className="p-1.5 text-[#546E7A] hover:text-[#D32F2F] rounded-lg hover:bg-white transition-colors"
-                  title="Remove Medication"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setEditingMedication(med)}
+                    className="p-1.5 text-[#546E7A] hover:text-[#167C80] rounded-lg hover:bg-white transition-colors"
+                    title="Edit Medication Schedule"
+                  >
+                    <Edit3 className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => onDeleteMedication(med.id)}
+                    className="p-1.5 text-[#546E7A] hover:text-[#D32F2F] rounded-lg hover:bg-white transition-colors"
+                    title="Remove Medication"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2 text-xs">
@@ -840,6 +851,16 @@ export function CaretakerView({
           </div>
         </div>
       )}
+      {/* MODAL 4: Edit Medication Schedule */}
+      <EditMedicationModal
+        medication={editingMedication}
+        isOpen={Boolean(editingMedication)}
+        onClose={() => setEditingMedication(null)}
+        onSave={(updated) => {
+          onUpdateMedication(updated);
+          setEditingMedication(null);
+        }}
+      />
     </div>
   );
 }

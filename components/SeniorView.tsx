@@ -1,13 +1,15 @@
 'use client';
 
 import React, { useState } from 'react';
-import { SeniorProfile, Medication, MedicationDoseLog, DoctorAppointment, DailyWellnessLog } from '@/lib/types';
+import { SeniorProfile, Medication, MedicationDoseLog, DoctorAppointment, DailyWellnessLog, CareUpdateNotice } from '@/lib/types';
 import { 
   CheckCircle2, Clock, Volume2, Heart, ShieldAlert, Sparkles, 
   Coffee, Pill, PhoneCall, Smile, Meh, Frown, Calendar, Info, 
-  MessageSquare, ChevronRight, HelpCircle, X
+  Printer, Mic, MicOff, Eye, Check, ShieldCheck, Sun, Compass
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { PillVerifierModal } from './PillVerifierModal';
+import { PrintableRoutine } from './PrintableRoutine';
 
 interface SeniorViewProps {
   senior: SeniorProfile;
@@ -15,10 +17,12 @@ interface SeniorViewProps {
   doseLogs: MedicationDoseLog[];
   appointments: DoctorAppointment[];
   wellnessLogs: DailyWellnessLog[];
+  careUpdates?: CareUpdateNotice[];
   onMarkDoseTaken: (logId: string) => void;
   onSnoozeDose: (logId: string) => void;
   onLogWellness: (mood: 'thriving' | 'good' | 'tired' | 'unwell', pain: number) => void;
   onTriggerSOS: () => void;
+  onAcknowledgeCareUpdate?: (updateId: string) => void;
 }
 
 export function SeniorView({
@@ -27,17 +31,20 @@ export function SeniorView({
   doseLogs,
   appointments,
   wellnessLogs,
+  careUpdates = [],
   onMarkDoseTaken,
   onSnoozeDose,
   onLogWellness,
   onTriggerSOS,
+  onAcknowledgeCareUpdate,
 }: SeniorViewProps) {
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [wellnessSuccess, setWellnessSuccess] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [voiceFeedback, setVoiceFeedback] = useState<string | null>(null);
+  const [zenMode, setZenMode] = useState(false);
   const [inspectMedication, setInspectMedication] = useState<Medication | null>(null);
-  const [showAIChat, setShowAIChat] = useState(false);
-  const [aiQuestion, setAiQuestion] = useState('');
-  const [aiAnswer, setAiAnswer] = useState<string | null>(null);
+  const [verifyingPill, setVerifyingPill] = useState<Medication | null>(null);
+  const [showPrintSheet, setShowPrintSheet] = useState(false);
 
   // Time-aware greeting
   const hour = new Date().getHours();
@@ -60,6 +67,9 @@ export function SeniorView({
 
   // Next upcoming appointment
   const nextAppointment = appointments.find((a) => a.status === 'upcoming');
+
+  // Pending care update requiring senior consent
+  const pendingUpdate = careUpdates.find((u) => u.status === 'pending_review');
 
   // Web Speech synthesis voice reader
   const handleReadScheduleAloud = () => {
@@ -84,13 +94,86 @@ export function SeniorView({
     }
 
     const utterance = new SpeechSynthesisUtterance(textToSpeak);
-    utterance.rate = 0.88; // Comfortable pace for seniors
+    utterance.rate = 0.88;
     utterance.pitch = 1.0;
     utterance.onstart = () => setIsSpeaking(true);
     utterance.onend = () => setIsSpeaking(false);
     utterance.onerror = () => setIsSpeaking(false);
 
     window.speechSynthesis.speak(utterance);
+  };
+
+  // Interactive Voice Command Recognition
+  const handleStartVoiceRecognition = () => {
+    if (typeof window === 'undefined') return;
+
+    // Check for browser speech recognition
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      // Fallback voice simulation
+      setVoiceFeedback('Listening... (Try saying "I took my pills" or "What is next?")');
+      setIsListening(true);
+      setTimeout(() => {
+        handleExecuteVoiceCommand('what is next');
+      }, 2000);
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'en-US';
+      recognition.continuous = false;
+      recognition.interimResults = false;
+
+      recognition.onstart = () => {
+        setIsListening(true);
+        setVoiceFeedback('CareNest is listening to you, Arthur...');
+      };
+
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript.toLowerCase();
+        setVoiceFeedback(`You said: "${transcript}"`);
+        handleExecuteVoiceCommand(transcript);
+      };
+
+      recognition.onerror = () => {
+        setIsListening(false);
+        setVoiceFeedback('Could not hear clearly. Tap a quick command below.');
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognition.start();
+    } catch (err) {
+      setIsListening(false);
+    }
+  };
+
+  const handleExecuteVoiceCommand = (command: string) => {
+    setIsListening(false);
+    const cmd = command.toLowerCase();
+
+    if (cmd.includes('took') || cmd.includes('taken') || cmd.includes('done') || cmd.includes('yes')) {
+      if (nextDose) {
+        handleTakeMedication(nextDose.id, nextDose.medicationName);
+        setVoiceFeedback(`✓ Marked ${nextDose.medicationName} as taken by voice command!`);
+      }
+    } else if (cmd.includes('next') || cmd.includes('what') || cmd.includes('schedule')) {
+      handleReadScheduleAloud();
+      setVoiceFeedback('Reading your current schedule aloud.');
+    } else if (cmd.includes('sos') || cmd.includes('help') || cmd.includes('emergency')) {
+      onTriggerSOS();
+      setVoiceFeedback('Activating Emergency Assistance beacon!');
+    } else if (cmd.includes('daughter') || cmd.includes('sarah') || cmd.includes('call')) {
+      window.location.href = `tel:${senior.emergencyContact.phone}`;
+      setVoiceFeedback(`Calling ${senior.emergencyContact.name}...`);
+    } else {
+      setVoiceFeedback(`Understood: "${command}". All your routines are up to date!`);
+    }
   };
 
   const handleTakeMedication = (logId: string, medName: string) => {
@@ -104,14 +187,13 @@ export function SeniorView({
       // ignore
     }
 
-    // Audio chime synthesis
     try {
       const audioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
-      osc.frequency.exponentialRampToValueAtTime(659.25, audioCtx.currentTime + 0.15); // E5
+      osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(659.25, audioCtx.currentTime + 0.15);
       gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
       osc.connect(gain);
@@ -122,7 +204,6 @@ export function SeniorView({
       // Audio not permitted
     }
 
-    // Vocal encouragement
     if ('speechSynthesis' in window) {
       const confirmSpeech = new SpeechSynthesisUtterance(`Wonderful job, ${senior.preferredName}! ${medName} marked as taken.`);
       confirmSpeech.rate = 0.95;
@@ -132,32 +213,100 @@ export function SeniorView({
     onMarkDoseTaken(logId);
   };
 
-  const handleAskCareNestAI = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!aiQuestion.trim()) return;
+  // ZEN FOCUS MODE: One Thing At A Time (Cognitive Friendly)
+  if (zenMode) {
+    return (
+      <div className="max-w-2xl mx-auto py-8 px-4 space-y-6 text-center animate-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-[#E6E4DC]">
+          <span className="font-extrabold text-sm text-[#167C80] flex items-center gap-2">
+            <Compass className="w-5 h-5" /> Zen Focus Mode (One Action At A Time)
+          </span>
+          <button
+            onClick={() => setZenMode(false)}
+            className="px-4 py-2 rounded-xl bg-[#F8F7F2] hover:bg-[#E6E4DC] text-[#263238] font-bold text-xs"
+          >
+            Exit Zen Mode ✕
+          </button>
+        </div>
 
-    // Simple plain-English health routine answers tailored for Arthur
-    const q = aiQuestion.toLowerCase();
-    if (q.includes('grapefruit') || q.includes('fruit') || q.includes('food')) {
-      setAiAnswer('Atorvastatin (your cholesterol medicine taken at 8:00 PM) interacts with grapefruit. Please do not drink grapefruit juice or eat fresh grapefruit with meals.');
-    } else if (q.includes('metformin') || q.includes('sugar') || q.includes('diabetes')) {
-      setAiAnswer('Metformin is for blood sugar. Always take it with your breakfast and dinner to avoid stomach upset.');
-    } else if (q.includes('doctor') || q.includes('appointment')) {
-      setAiAnswer(`Your next doctor visit is with ${nextAppointment?.doctorName || 'Dr. Vance'} on ${nextAppointment?.date || 'Thursday'} at ${nextAppointment?.time || '10:30 AM'}.`);
-    } else {
-      setAiAnswer(`Hello Arthur! All your medicines are organized on schedule. You have taken ${takenCount} of ${totalDoses} doses today. If you feel unwell, press the Call Caregiver button.`);
-    }
-  };
+        {nextDose ? (
+          <div className="bg-white rounded-3xl border-4 border-[#167C80] p-8 sm:p-12 shadow-xl space-y-8">
+            <div className="space-y-2">
+              <span className="text-xs font-bold uppercase tracking-widest text-[#167C80] bg-[#E8F3F3] px-4 py-1.5 rounded-full">
+                Scheduled for {nextDose.scheduledTime}
+              </span>
+              <h2 className="text-4xl sm:text-5xl font-black text-[#263238] pt-2">
+                {nextDose.medicationName}
+              </h2>
+              <p className="text-xl text-[#546E7A] font-bold">Dosage: {nextDose.dosage}</p>
+            </div>
+
+            {matchingMedication?.specialInstructions && (
+              <div className="p-5 rounded-2xl bg-[#E8F3F3] border border-[#B7D4C2] text-base text-[#263238] font-semibold">
+                💡 {matchingMedication.specialInstructions}
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <button
+                onClick={() => handleTakeMedication(nextDose.id, nextDose.medicationName)}
+                className="w-full py-6 px-8 rounded-3xl bg-[#1B8354] hover:bg-[#156c45] active:scale-95 text-white font-black text-2xl shadow-lg transition-all flex items-center justify-center gap-3 border-4 border-emerald-400"
+              >
+                <CheckCircle2 className="w-10 h-10" />
+                <span>I TOOK THIS MEDICINE</span>
+              </button>
+
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  onClick={() => onSnoozeDose(nextDose.id)}
+                  className="py-4 px-6 rounded-2xl bg-[#F8F7F2] hover:bg-[#E6E4DC] text-[#263238] font-bold text-base border-2 border-[#E6E4DC]"
+                >
+                  Remind in 15 Min
+                </button>
+                <button
+                  onClick={() => matchingMedication && setVerifyingPill(matchingMedication)}
+                  className="py-4 px-6 rounded-2xl bg-[#E8F3F3] text-[#167C80] font-bold text-base border-2 border-[#B7D4C2] flex items-center justify-center gap-2"
+                >
+                  <Eye className="w-5 h-5" />
+                  <span>Check Pill</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-3xl border-2 border-[#B7D4C2] p-12 shadow-sm space-y-4 text-center">
+            <div className="w-20 h-20 rounded-full bg-[#F0F6F2] text-[#1B8354] flex items-center justify-center mx-auto">
+              <Sun className="w-12 h-12" />
+            </div>
+            <h2 className="text-3xl font-black text-[#263238]">All Done for Now!</h2>
+            <p className="text-base text-[#546E7A] max-w-md mx-auto">
+              You have taken all scheduled medicines. Rest, stay hydrated, and enjoy your day!
+            </p>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 pb-16 max-w-5xl mx-auto">
-      {/* 1. Personalized Welcome Banner */}
-      <section className="bg-gradient-to-r from-[#167C80] to-[#126366] text-white rounded-3xl p-6 sm:p-8 shadow-sm relative overflow-hidden">
+      {/* 1. Personalized Welcome & Accessibility Action Bar */}
+      <section className="bg-gradient-to-r from-[#167C80] to-[#126366] text-white rounded-3xl p-6 sm:p-8 shadow-xs relative overflow-hidden">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 text-xs font-bold uppercase tracking-wider">
-              👴 Senior Independence Portal
-            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 text-xs font-bold uppercase tracking-wider">
+                👴 Senior Independence Portal
+              </span>
+              <button
+                onClick={() => setZenMode(true)}
+                className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white text-[#167C80] text-xs font-bold hover:bg-[#F8F7F2] transition-colors"
+                title="Simplified single-action interface"
+              >
+                <Compass className="w-3.5 h-3.5" />
+                <span>Zen Focus Mode</span>
+              </button>
+            </div>
             <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
               {timeGreeting}, {senior.preferredName}.
             </h1>
@@ -180,6 +329,28 @@ export function SeniorView({
               <span>{isSpeaking ? 'Reading Aloud...' : 'Read My Schedule'}</span>
             </button>
 
+            {/* Hands-Free Voice Assistant Button */}
+            <button
+              onClick={handleStartVoiceRecognition}
+              className={`flex items-center gap-2 px-5 py-3.5 rounded-2xl font-bold text-base shadow-sm transition-all ${
+                isListening
+                  ? 'bg-[#D32F2F] text-white ring-4 ring-red-200 animate-pulse'
+                  : 'bg-white/20 text-white hover:bg-white/30 border border-white/30'
+              }`}
+            >
+              {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+              <span>{isListening ? 'Listening...' : 'Voice Command'}</span>
+            </button>
+
+            {/* Printable Fridge Sheet */}
+            <button
+              onClick={() => setShowPrintSheet(true)}
+              className="p-3.5 rounded-2xl bg-white/20 hover:bg-white/30 text-white border border-white/30 transition-all"
+              title="Print Large Fridge Routine"
+            >
+              <Printer className="w-5 h-5" />
+            </button>
+
             {/* Quick Emergency SOS */}
             <button
               onClick={onTriggerSOS}
@@ -190,9 +361,63 @@ export function SeniorView({
             </button>
           </div>
         </div>
+
+        {/* Voice Feedback Bar */}
+        {voiceFeedback && (
+          <div className="mt-4 pt-3 border-t border-white/20 text-xs text-teal-100 flex items-center justify-between">
+            <span className="font-semibold">{voiceFeedback}</span>
+            <button
+              onClick={() => setVoiceFeedback(null)}
+              className="text-white hover:underline text-[11px]"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
       </section>
 
-      {/* 2. Today's Health Overview */}
+      {/* 2. Elderly Decision & Consent Gate (Promoting Patient Autonomy) */}
+      {pendingUpdate && (
+        <section className="bg-[#E8F3F3] rounded-3xl border-2 border-[#167C80] p-6 shadow-sm space-y-4 animate-in slide-in-from-top-3 duration-200">
+          <div className="flex items-center justify-between border-b border-[#B7D4C2] pb-3">
+            <div className="flex items-center gap-2">
+              <span className="p-2 rounded-xl bg-white text-[#167C80] shadow-2xs">
+                <ShieldCheck className="w-5 h-5" />
+              </span>
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#167C80]">
+                  Decision & Consent Gate (You are at the Center of Care)
+                </span>
+                <h3 className="text-base font-bold text-[#263238]">{pendingUpdate.title}</h3>
+              </div>
+            </div>
+            <span className="text-xs font-semibold text-[#546E7A]">
+              Proposed by {pendingUpdate.updatedBy}
+            </span>
+          </div>
+
+          <p className="text-sm text-[#263238] leading-relaxed">
+            {pendingUpdate.description}
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-2">
+            <a
+              href="tel:+15554329011"
+              className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-white border border-[#B7D4C2] text-[#263238] text-xs font-bold text-center hover:bg-[#F8F7F2]"
+            >
+              Ask Nurse Elena About This
+            </a>
+            <button
+              onClick={() => onAcknowledgeCareUpdate?.(pendingUpdate.id)}
+              className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-[#167C80] hover:bg-[#126366] text-white text-xs font-bold shadow-xs transition-colors"
+            >
+              ✓ I Understand & Agree to This Schedule
+            </button>
+          </div>
+        </section>
+      )}
+
+      {/* 3. Today's Health Overview */}
       <section className="bg-white rounded-3xl border border-[#E6E4DC] p-6 sm:p-7 shadow-xs space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E6E4DC] pb-4">
           <h2 className="text-xl font-bold text-[#263238] flex items-center gap-2">
@@ -214,9 +439,8 @@ export function SeniorView({
           </div>
         </div>
 
-        {/* Overview Grid: Next Med, Upcoming Visit, Daily Checklist */}
+        {/* Overview Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Item 1: Next Medication */}
           <div className="p-4 rounded-2xl bg-[#F8F7F2] border border-[#E6E4DC] space-y-1.5">
             <span className="text-[11px] font-bold uppercase tracking-wider text-[#546E7A]">
               Next Medication
@@ -237,7 +461,6 @@ export function SeniorView({
             )}
           </div>
 
-          {/* Item 2: Upcoming Appointment */}
           <div className="p-4 rounded-2xl bg-[#F8F7F2] border border-[#E6E4DC] space-y-1.5">
             <span className="text-[11px] font-bold uppercase tracking-wider text-[#546E7A]">
               Next Doctor Visit
@@ -256,7 +479,6 @@ export function SeniorView({
             )}
           </div>
 
-          {/* Item 3: Daily Health Checklist */}
           <div className="p-4 rounded-2xl bg-[#F8F7F2] border border-[#E6E4DC] space-y-1.5">
             <span className="text-[11px] font-bold uppercase tracking-wider text-[#546E7A]">
               Daily Routine Checklist
@@ -279,27 +501,38 @@ export function SeniorView({
         </div>
       </section>
 
-      {/* 3. Primary Next Medication Focus Card */}
+      {/* 4. Primary Next Medication Focus Card with Visual Pill Verifier */}
       {nextDose && (
         <section className="bg-white rounded-3xl border-2 border-[#167C80] shadow-md p-6 sm:p-8 space-y-6">
-          <div className="flex items-center justify-between border-b border-[#E6E4DC] pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E6E4DC] pb-4">
             <div className="flex items-center gap-2">
               <span className="flex h-3.5 w-3.5 relative">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#167C80] opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-[#167C80]"></span>
               </span>
               <span className="text-sm font-extrabold tracking-wider text-[#167C80] uppercase">
-                Ready to Take • Target Time: {nextDose.scheduledTime}
+                Scheduled Next • Target: {nextDose.scheduledTime}
               </span>
             </div>
 
-            <button
-              onClick={() => matchingMedication && setInspectMedication(matchingMedication)}
-              className="text-xs font-bold text-[#167C80] hover:underline flex items-center gap-1"
-            >
-              <Info className="w-4 h-4" />
-              <span>View Instructions</span>
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => matchingMedication && setVerifyingPill(matchingMedication)}
+                className="text-xs font-bold text-[#167C80] bg-[#E8F3F3] hover:bg-[#d8eaea] px-3 py-1.5 rounded-xl border border-[#B7D4C2] flex items-center gap-1.5 transition-colors"
+                title="Visual Pill Identifier"
+              >
+                <Eye className="w-4 h-4" />
+                <span>Verify Pill in Hand</span>
+              </button>
+
+              <button
+                onClick={() => matchingMedication && setInspectMedication(matchingMedication)}
+                className="text-xs font-bold text-[#546E7A] hover:text-[#263238] flex items-center gap-1"
+              >
+                <Info className="w-4 h-4" />
+                <span>View Instructions</span>
+              </button>
+            </div>
           </div>
 
           <div className="space-y-4">
@@ -359,12 +592,21 @@ export function SeniorView({
         </section>
       )}
 
-      {/* 4. Today's Full Medication List Overview */}
+      {/* 5. Today's Full Medication List Overview */}
       <section className="bg-white rounded-3xl border border-[#E6E4DC] p-6 sm:p-7 shadow-xs space-y-4">
-        <h3 className="text-xl font-bold text-[#263238] flex items-center gap-2">
-          <Pill className="w-5 h-5 text-[#167C80]" />
-          <span>All Today&apos;s Medications</span>
-        </h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-xl font-bold text-[#263238] flex items-center gap-2">
+            <Pill className="w-5 h-5 text-[#167C80]" />
+            <span>All Today&apos;s Medications</span>
+          </h3>
+
+          <button
+            onClick={() => setShowPrintSheet(true)}
+            className="text-xs font-bold text-[#167C80] hover:underline flex items-center gap-1"
+          >
+            <Printer className="w-3.5 h-3.5" /> Large-Print Fridge Sheet
+          </button>
+        </div>
 
         <div className="space-y-3">
           {doseLogs.map((log) => {
@@ -399,6 +641,16 @@ export function SeniorView({
                 </div>
 
                 <div className="flex items-center gap-2 self-end sm:self-center">
+                  {med && (
+                    <button
+                      onClick={() => setVerifyingPill(med)}
+                      className="p-2 text-[#546E7A] hover:text-[#167C80] rounded-lg border border-[#E6E4DC]"
+                      title="Verify pill in hand"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
+                  )}
+
                   {isTaken ? (
                     <span className="text-xs font-bold text-[#1B8354] bg-white px-3 py-1.5 rounded-full border border-[#B7D4C2]">
                       ✓ Taken at {new Date(log.takenAt || '').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -418,7 +670,7 @@ export function SeniorView({
         </div>
       </section>
 
-      {/* 5. Upcoming Appointment Card with Preparation Notes */}
+      {/* 6. Upcoming Appointment Card */}
       {nextAppointment && (
         <section className="bg-white rounded-3xl border border-[#E6E4DC] p-6 sm:p-7 shadow-xs space-y-4">
           <div className="flex items-center justify-between border-b border-[#E6E4DC] pb-3">
@@ -436,7 +688,6 @@ export function SeniorView({
               <h4 className="font-bold text-base text-[#263238]">{nextAppointment.doctorName}</h4>
               <p className="text-xs font-semibold text-[#167C80]">{nextAppointment.specialty}</p>
               <p className="text-xs text-[#546E7A]">{nextAppointment.clinicName}</p>
-              <p className="text-xs text-[#546E7A]">{nextAppointment.location}</p>
             </div>
 
             <div className="p-4 rounded-2xl bg-[#E8F3F3] border border-[#B7D4C2] space-y-2 text-xs">
@@ -446,167 +697,67 @@ export function SeniorView({
                   <li key={idx}>{p}</li>
                 ))}
               </ul>
-              {nextAppointment.accompaniedBy && (
-                <p className="text-xs font-semibold text-[#167C80] pt-1">
-                  🚗 Accompanying: {nextAppointment.accompaniedBy}
-                </p>
-              )}
             </div>
           </div>
         </section>
       )}
 
-      {/* 6. Quick Assistance & Ask CareNest AI */}
-      <section className="bg-white rounded-3xl border border-[#E6E4DC] p-6 sm:p-7 shadow-xs space-y-6">
+      {/* 7. Quick Assistance Channels */}
+      <section className="bg-white rounded-3xl border border-[#E6E4DC] p-6 sm:p-7 shadow-xs space-y-4">
         <h3 className="text-xl font-bold text-[#263238] flex items-center gap-2">
-          <HelpCircle className="w-5 h-5 text-[#167C80]" />
-          <span>Quick Assistance & Family Updates</span>
+          <PhoneCall className="w-5 h-5 text-[#167C80]" />
+          <span>Quick Contact Channels</span>
         </h3>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {/* Quick Action 1: Call Caregiver */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <a
             href="tel:+15554329011"
-            className="p-5 rounded-2xl bg-[#F8F7F2] hover:bg-[#E8F3F3] border border-[#E6E4DC] hover:border-[#167C80] transition-all flex flex-col justify-between group"
+            className="p-5 rounded-2xl bg-[#F8F7F2] hover:bg-[#E8F3F3] border border-[#E6E4DC] hover:border-[#167C80] transition-all flex items-center justify-between"
           >
-            <div className="space-y-1">
-              <div className="p-2.5 rounded-xl bg-white border border-[#E6E4DC] text-[#167C80] inline-block mb-2">
-                <PhoneCall className="w-5 h-5" />
-              </div>
-              <h4 className="font-bold text-base text-[#263238]">Call Caregiver</h4>
-              <p className="text-xs text-[#546E7A]">Direct line to Nurse Elena Vance, RN</p>
+            <div>
+              <h4 className="font-bold text-base text-[#263238]">Call Nurse Elena, RN</h4>
+              <p className="text-xs text-[#546E7A]">Visiting Registered Nurse • Shift Active</p>
             </div>
-            <span className="text-xs font-bold text-[#167C80] pt-3 group-hover:underline">
-              Tap to Call →
+            <span className="p-3 rounded-xl bg-white border border-[#E6E4DC] text-[#167C80]">
+              <PhoneCall className="w-5 h-5" />
             </span>
           </a>
 
-          {/* Quick Action 2: Call Daughter */}
           <a
             href={`tel:${senior.emergencyContact.phone}`}
-            className="p-5 rounded-2xl bg-[#F8F7F2] hover:bg-[#FDF3EF] border border-[#E6E4DC] hover:border-[#F2A58A] transition-all flex flex-col justify-between group"
+            className="p-5 rounded-2xl bg-[#F8F7F2] hover:bg-[#FDF3EF] border border-[#E6E4DC] hover:border-[#F2A58A] transition-all flex items-center justify-between"
           >
-            <div className="space-y-1">
-              <div className="p-2.5 rounded-xl bg-white border border-[#E6E4DC] text-[#D32F2F] inline-block mb-2">
-                <Heart className="w-5 h-5" />
-              </div>
+            <div>
               <h4 className="font-bold text-base text-[#263238]">Call Sarah (Daughter)</h4>
-              <p className="text-xs text-[#546E7A]">{senior.emergencyContact.phone}</p>
+              <p className="text-xs text-[#546E7A]">Primary Family Proxy • {senior.emergencyContact.phone}</p>
             </div>
-            <span className="text-xs font-bold text-[#D32F2F] pt-3 group-hover:underline">
-              Tap to Call →
+            <span className="p-3 rounded-xl bg-white border border-[#E6E4DC] text-[#D32F2F]">
+              <Heart className="w-5 h-5" />
             </span>
           </a>
-
-          {/* Quick Action 3: Ask CareNest AI */}
-          <button
-            onClick={() => setShowAIChat(!showAIChat)}
-            className="p-5 rounded-2xl bg-[#F8F7F2] hover:bg-[#E8F3F3] border border-[#E6E4DC] hover:border-[#167C80] transition-all flex flex-col justify-between text-left group"
-          >
-            <div className="space-y-1">
-              <div className="p-2.5 rounded-xl bg-white border border-[#E6E4DC] text-[#167C80] inline-block mb-2">
-                <Sparkles className="w-5 h-5" />
-              </div>
-              <h4 className="font-bold text-base text-[#263238]">Ask CareNest AI</h4>
-              <p className="text-xs text-[#546E7A]">Friendly spoken answers about your routine</p>
-            </div>
-            <span className="text-xs font-bold text-[#167C80] pt-3 group-hover:underline">
-              {showAIChat ? 'Hide Assistant ↑' : 'Open Assistant →'}
-            </span>
-          </button>
         </div>
-
-        {/* Inline AI Assistant Dialog */}
-        {showAIChat && (
-          <div className="p-5 rounded-2xl bg-[#E8F3F3]/50 border border-[#B7D4C2] space-y-4 animate-in fade-in duration-150">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-sm text-[#167C80] flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4" /> Ask CareNest AI (Voice or Text)
-              </span>
-              <button
-                onClick={() => setShowAIChat(false)}
-                className="text-xs font-bold text-[#546E7A] hover:text-[#263238]"
-              >
-                ✕ Close
-              </button>
-            </div>
-
-            <form onSubmit={handleAskCareNestAI} className="flex gap-2">
-              <input
-                type="text"
-                value={aiQuestion}
-                onChange={(e) => setAiQuestion(e.target.value)}
-                placeholder="e.g., Can I eat grapefruit with my dinner pill? or When is my doctor visit?"
-                className="flex-1 p-3 rounded-xl border border-[#E6E4DC] bg-white text-xs focus:ring-2 focus:ring-[#167C80] focus:outline-hidden"
-              />
-              <button
-                type="submit"
-                className="px-5 py-3 rounded-xl bg-[#167C80] hover:bg-[#126366] text-white text-xs font-bold shadow-xs transition-colors shrink-0"
-              >
-                Ask AI
-              </button>
-            </form>
-
-            {aiAnswer && (
-              <div className="p-4 rounded-xl bg-white border border-[#B7D4C2] text-xs space-y-2">
-                <p className="text-[#263238] font-medium leading-relaxed">{aiAnswer}</p>
-                <button
-                  onClick={() => {
-                    if ('speechSynthesis' in window) {
-                      const u = new SpeechSynthesisUtterance(aiAnswer);
-                      u.rate = 0.9;
-                      window.speechSynthesis.speak(u);
-                    }
-                  }}
-                  className="text-[11px] font-bold text-[#167C80] flex items-center gap-1 hover:underline"
-                >
-                  <Volume2 className="w-3.5 h-3.5" /> Listen Aloud
-                </button>
-              </div>
-            )}
-          </div>
-        )}
       </section>
 
-      {/* Medication Instruction Modal */}
-      {inspectMedication && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-5 shadow-2xl border border-[#E6E4DC]">
-            <div className="flex items-center justify-between border-b border-[#E6E4DC] pb-3">
-              <div>
-                <h3 className="text-xl font-bold text-[#263238]">{inspectMedication.name}</h3>
-                <p className="text-xs text-[#546E7A]">Dosage: {inspectMedication.dosage}</p>
-              </div>
-              <button
-                onClick={() => setInspectMedication(null)}
-                className="text-[#546E7A] hover:text-[#263238] text-lg font-bold p-1"
-              >
-                ✕
-              </button>
-            </div>
+      {/* Pill Verifier Modal */}
+      <PillVerifierModal
+        medication={verifyingPill}
+        onClose={() => setVerifyingPill(null)}
+        onConfirmMatch={(med) => {
+          setVerifyingPill(null);
+          if (nextDose && nextDose.medicationId === med.id) {
+            handleTakeMedication(nextDose.id, nextDose.medicationName);
+          }
+        }}
+      />
 
-            <div className="space-y-3 text-xs text-[#263238]">
-              <div className="p-3 rounded-xl bg-[#F8F7F2] border border-[#E6E4DC]">
-                <strong>Purpose:</strong> {inspectMedication.purpose}
-              </div>
-              <div className="p-3 rounded-xl bg-[#E8F3F3] border border-[#B7D4C2]">
-                <strong>Special Instructions:</strong> {inspectMedication.specialInstructions}
-              </div>
-              {inspectMedication.dietaryInteractions && inspectMedication.dietaryInteractions.length > 0 && (
-                <div className="p-3 rounded-xl bg-[#FDF3EF] border border-[#F2A58A] text-[#D32F2F]">
-                  <strong>Dietary Rules:</strong> {inspectMedication.dietaryInteractions.join(', ')}
-                </div>
-              )}
-            </div>
-
-            <button
-              onClick={() => setInspectMedication(null)}
-              className="w-full py-3 rounded-xl bg-[#167C80] text-white font-bold text-xs shadow-xs"
-            >
-              Close Instructions
-            </button>
-          </div>
-        </div>
+      {/* Printable Routine Sheet */}
+      {showPrintSheet && (
+        <PrintableRoutine
+          senior={senior}
+          medications={medications}
+          appointments={appointments}
+          onClose={() => setShowPrintSheet(false)}
+        />
       )}
     </div>
   );
