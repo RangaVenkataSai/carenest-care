@@ -99,12 +99,24 @@ export function PrintableRoutine({
                         {med.scheduledTimes.join(' & ')}
                       </td>
                       <td className="p-3">
-                        <strong className="text-base text-[#263238] block">{med.name}</strong>
-                        <span className="text-xs text-[#546E7A]">{med.dosage} • {med.purpose}</span>
+                        <div className="flex items-center gap-2.5">
+                          {med.imageUrl && (
+                            <img
+                              src={med.imageUrl}
+                              alt={med.name}
+                              className="w-10 h-10 rounded-lg object-cover border border-[#263238] shrink-0"
+                            />
+                          )}
+                          <div>
+                            <strong className="text-base text-[#263238] block">{med.name}</strong>
+                            <span className="text-xs text-[#546E7A]">{med.dosage} • {med.purpose}</span>
+                          </div>
+                        </div>
                       </td>
                       <td className="p-3">
                         <span className="inline-block px-2 py-1 rounded-md bg-[#F8F7F2] border border-[#E6E4DC] font-semibold text-xs">
                           {med.pillColor} ({med.pillShape})
+                          {med.pillImprint && <span className="block font-mono text-[11px] text-[#167C80]">Imprint: {med.pillImprint}</span>}
                         </span>
                       </td>
                       <td className="p-3 text-xs leading-relaxed">

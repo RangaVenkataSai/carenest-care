@@ -33,6 +33,10 @@ export interface Medication {
   form: MedicationForm;
   pillColor: string; // for visual recognition
   pillShape: string;
+  pillImprint?: string; // e.g. "M 500" or "L 10"
+  imageUrl?: string; // High-resolution photo of actual physical pill
+  bottleImageUrl?: string; // Photo of prescription bottle / packaging
+  visualDescription?: string; // e.g. "White oval tablet scored in half with M 500 imprint"
   frequency: 'once_daily' | 'twice_daily' | 'three_times_daily' | 'as_needed' | 'custom';
   scheduledTimes: string[]; // e.g. ["08:00", "20:00"]
   withFood: 'before_meal' | 'with_meal' | 'after_meal' | 'anytime';

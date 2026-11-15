@@ -1,45 +1,57 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Medication } from '@/lib/types';
-import { Eye, CheckCircle2, Volume2, X, Pill, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Eye, CheckCircle2, Volume2, X, Pill, ShieldCheck, AlertCircle, ZoomIn } from 'lucide-react';
+import { VoiceLanguage, speakText } from '@/lib/voiceAssistant';
 
 interface PillVerifierModalProps {
   medication: Medication | null;
+  voiceLang?: VoiceLanguage;
   onClose: () => void;
   onConfirmMatch: (med: Medication) => void;
 }
 
 export function PillVerifierModal({
   medication,
+  voiceLang = 'en',
   onClose,
   onConfirmMatch,
 }: PillVerifierModalProps) {
+  const [activeTab, setActiveTab] = useState<'photo' | 'diagram'>('photo');
+
   if (!medication) return null;
 
   const handleReadAppearance = () => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-    const text = `Verifying ${medication.name}. The pill should be ${medication.pillColor} in color and ${medication.pillShape} in shape. Your dosage is ${medication.dosage}. ${medication.specialInstructions}`;
-    const u = new SpeechSynthesisUtterance(text);
-    u.rate = 0.88;
-    window.speechSynthesis.speak(u);
+    let text = '';
+    if (voiceLang === 'te') {
+      text = `మందు ధృవీకరణ: ${medication.name}. దీని రంగు ${medication.pillColor}, ఆకారం ${medication.pillShape}. మోతాదు ${medication.dosage}. మీ చేతిలోని మాత్రతో సరిపోల్చుకోండి.`;
+    } else if (voiceLang === 'hi') {
+      text = `दवाई की पहचान: ${medication.name}. इसका रंग ${medication.pillColor} और आकार ${medication.pillShape} है। मात्रा ${medication.dosage} है। अपनी गोली का मिलान करें।`;
+    } else {
+      text = `Verifying ${medication.name}. The pill should be ${medication.pillColor} in color and ${medication.pillShape} in shape with imprint ${
+        medication.pillImprint || medication.dosage
+      }. Your dosage is ${medication.dosage}. ${medication.specialInstructions}`;
+    }
+
+    speakText(text, voiceLang);
   };
 
   // Determine realistic CSS representation of the pill
-  let pillBg = 'bg-white border-slate-300';
-  let pillShapeClass = 'w-24 h-24 rounded-full'; // round default
-  let pillText = medication.dosage;
+  const isYellow = medication.pillColor.toLowerCase().includes('yellow');
+  const isAmber = medication.pillColor.toLowerCase().includes('amber') || medication.pillColor.toLowerCase().includes('orange');
+  const isBlue = medication.pillColor.toLowerCase().includes('blue');
 
-  if (medication.pillColor.toLowerCase().includes('yellow')) {
+  let pillBg = 'bg-white border-slate-300 text-slate-800 shadow-inner';
+  if (isYellow) {
     pillBg = 'bg-amber-100 border-amber-300 text-amber-900';
-  } else if (medication.pillColor.toLowerCase().includes('amber') || medication.pillColor.toLowerCase().includes('orange')) {
+  } else if (isAmber) {
     pillBg = 'bg-orange-100 border-orange-300 text-orange-950';
-  } else if (medication.pillColor.toLowerCase().includes('blue')) {
+  } else if (isBlue) {
     pillBg = 'bg-blue-100 border-blue-300 text-blue-900';
-  } else {
-    pillBg = 'bg-slate-50 border-slate-300 text-slate-800 shadow-inner';
   }
 
+  let pillShapeClass = 'w-24 h-24 rounded-full';
   if (medication.pillShape.toLowerCase().includes('oval')) {
     pillShapeClass = 'w-32 h-20 rounded-full';
   } else if (medication.pillShape.toLowerCase().includes('oblong') || medication.pillShape.toLowerCase().includes('capsule')) {
@@ -48,7 +60,7 @@ export function PillVerifierModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-6 shadow-2xl border-2 border-[#167C80] text-center animate-in zoom-in-95 duration-200">
+      <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-5 shadow-2xl border-2 border-[#167C80] text-center animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[#E6E4DC] pb-3">
           <div className="flex items-center gap-2">
@@ -57,7 +69,7 @@ export function PillVerifierModal({
             </span>
             <div className="text-left">
               <h3 className="font-extrabold text-base text-[#263238]">Visual Pill Identifier</h3>
-              <p className="text-xs text-[#546E7A]">Compare the pill in your hand before taking</p>
+              <p className="text-xs text-[#546E7A]">Compare the pill in your hand before swallowing</p>
             </div>
           </div>
 
@@ -69,28 +81,63 @@ export function PillVerifierModal({
           </button>
         </div>
 
-        {/* Visual Pill Representation */}
-        <div className="py-6 px-4 rounded-3xl bg-[#F8F7F2] border border-[#E6E4DC] space-y-4">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-[#546E7A]">
-            Expected Visual Appearance
-          </span>
+        {/* Real Medicine Image Display */}
+        <div className="p-4 rounded-3xl bg-[#F8F7F2] border border-[#E6E4DC] space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#167C80] flex items-center gap-1">
+              <Pill className="w-3.5 h-3.5" />
+              <span>Physical Medicine Appearance</span>
+            </span>
 
-          {/* Interactive Pill graphic */}
-          <div className="flex items-center justify-center py-4">
-            <div
-              className={`border-4 flex items-center justify-center font-black text-sm tracking-wider shadow-md transform hover:scale-105 transition-transform ${pillShapeClass} ${pillBg}`}
-            >
-              <span>{pillText}</span>
-            </div>
+            {medication.imageUrl && (
+              <div className="flex items-center bg-white p-0.5 rounded-lg border border-[#E6E4DC] text-[10px] font-bold">
+                <button
+                  onClick={() => setActiveTab('photo')}
+                  className={`px-2 py-0.5 rounded-md ${activeTab === 'photo' ? 'bg-[#167C80] text-white' : 'text-[#546E7A]'}`}
+                >
+                  Photo
+                </button>
+                <button
+                  onClick={() => setActiveTab('diagram')}
+                  className={`px-2 py-0.5 rounded-md ${activeTab === 'diagram' ? 'bg-[#167C80] text-white' : 'text-[#546E7A]'}`}
+                >
+                  Diagram
+                </button>
+              </div>
+            )}
           </div>
 
-          <div className="text-xs font-semibold text-[#263238] space-y-1">
-            <p>
-              Color: <strong>{medication.pillColor}</strong> • Shape: <strong>{medication.pillShape}</strong>
-            </p>
-            <p className="text-[#546E7A]">
-              Dosage: <strong className="text-[#167C80]">{medication.dosage}</strong> ({medication.form.toUpperCase()})
-            </p>
+          {/* Image Container */}
+          <div className="w-full h-48 sm:h-52 rounded-2xl overflow-hidden border-2 border-white shadow-sm bg-white flex items-center justify-center">
+            {activeTab === 'photo' && medication.imageUrl ? (
+              <img
+                src={medication.imageUrl}
+                alt={medication.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div
+                className={`border-4 flex items-center justify-center font-black text-sm tracking-wider shadow-md ${pillShapeClass} ${pillBg}`}
+              >
+                <span>{medication.pillImprint || medication.dosage}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Visual Cues */}
+          <div className="grid grid-cols-3 gap-2 text-xs text-left bg-white p-3 rounded-2xl border border-[#E6E4DC]">
+            <div>
+              <span className="text-[10px] text-[#546E7A] block font-bold uppercase">Color</span>
+              <strong className="text-[#263238]">{medication.pillColor}</strong>
+            </div>
+            <div>
+              <span className="text-[10px] text-[#546E7A] block font-bold uppercase">Shape</span>
+              <strong className="text-[#263238]">{medication.pillShape}</strong>
+            </div>
+            <div>
+              <span className="text-[10px] text-[#546E7A] block font-bold uppercase">Imprint</span>
+              <strong className="text-[#167C80] font-mono">{medication.pillImprint || medication.dosage}</strong>
+            </div>
           </div>
         </div>
 

@@ -13,6 +13,7 @@ import {
 import confetti from 'canvas-confetti';
 import { PillVerifierModal } from './PillVerifierModal';
 import { PrintableRoutine } from './PrintableRoutine';
+import { MedicineVisualCard } from './MedicineVisualCard';
 import { VoiceLanguage, VOICE_TRANSLATIONS, speakText, stopSpeech } from '@/lib/voiceAssistant';
 
 interface SeniorViewProps {
@@ -302,6 +303,15 @@ export function SeniorView({
               <div className="p-5 rounded-2xl bg-[#E8F3F3] border border-[#B7D4C2] text-base text-[#263238] font-semibold">
                 💡 {matchingMedication.specialInstructions}
               </div>
+            )}
+
+            {/* Visual Medicine Identifier in Zen Mode */}
+            {matchingMedication && (
+              <MedicineVisualCard
+                medication={matchingMedication}
+                mode="zen"
+                voiceLang={voiceLang}
+              />
             )}
 
             <div className="space-y-4">
@@ -739,6 +749,15 @@ export function SeniorView({
               </div>
             )}
 
+            {/* Visual Medicine Identification Card with actual pill photo */}
+            {matchingMedication && (
+              <MedicineVisualCard
+                medication={matchingMedication}
+                mode="hero"
+                voiceLang={voiceLang}
+              />
+            )}
+
             {/* Giant One-Tap Action Buttons */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
               <button
@@ -792,8 +811,17 @@ export function SeniorView({
                 }`}
               >
                 <div className="flex items-center gap-3.5">
+                  {/* Medicine Visual Thumbnail with tap-to-enlarge */}
+                  {med && (
+                    <MedicineVisualCard
+                      medication={med}
+                      mode="compact"
+                      voiceLang={voiceLang}
+                    />
+                  )}
+
                   <div
-                    className={`w-11 h-11 rounded-xl flex items-center justify-center ${
+                    className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
                       isTaken ? 'bg-[#1B8354] text-white' : 'bg-[#E8F3F3] text-[#167C80]'
                     }`}
                   >
@@ -801,7 +829,14 @@ export function SeniorView({
                   </div>
 
                   <div>
-                    <h4 className="font-bold text-base text-[#263238]">{log.medicationName}</h4>
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-bold text-base text-[#263238]">{log.medicationName}</h4>
+                      {med?.pillColor && (
+                        <span className="hidden sm:inline-flex px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#F8F7F2] text-[#546E7A] border border-[#E6E4DC]">
+                          {med.pillColor} ({med.pillShape})
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-[#546E7A]">
                       Scheduled: <strong>{log.scheduledTime}</strong> • {log.dosage}
                       {med?.withFood && ` • ${med.withFood.replace('_', ' ')}`}
@@ -920,6 +955,7 @@ export function SeniorView({
       {/* Pill Verifier Modal */}
       <PillVerifierModal
         medication={verifyingPill}
+        voiceLang={voiceLang}
         onClose={() => setVerifyingPill(null)}
         onConfirmMatch={(med) => {
           setVerifyingPill(null);
@@ -932,7 +968,7 @@ export function SeniorView({
       {/* Senior Medication Instructions & Guidance Modal */}
       {inspectMedication && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-6 shadow-2xl border-2 border-[#167C80] animate-in zoom-in-95 duration-200">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-5 shadow-2xl border-2 border-[#167C80] animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-[#E6E4DC] pb-4">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-2xl bg-[#E8F3F3] text-[#167C80] flex items-center justify-center font-bold">
@@ -953,6 +989,13 @@ export function SeniorView({
                 ✕
               </button>
             </div>
+
+            {/* Prominent Visual Image Card */}
+            <MedicineVisualCard
+              medication={inspectMedication}
+              mode="hero"
+              voiceLang={voiceLang}
+            />
 
             <div className="space-y-4 text-[#263238]">
               <div className="p-4 rounded-2xl bg-[#F8F7F2] border border-[#E6E4DC] grid grid-cols-2 gap-3 text-sm">

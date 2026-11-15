@@ -147,6 +147,8 @@ export function CaretakerView({
       form: newMedForm,
       pillColor: newMedColor,
       pillShape: newMedShape,
+      pillImprint: newMedDosage,
+      imageUrl: 'https://images.unsplash.com/photo-1550572017-ed236b2816d0?w=600&auto=format&fit=crop&q=80',
       frequency: newMedFrequency,
       scheduledTimes: [newMedTime],
       withFood: newMedWithFood,
@@ -347,9 +349,19 @@ export function CaretakerView({
               className="bg-[#F8F7F2] border border-[#E6E4DC] rounded-2xl p-5 hover:border-[#167C80] transition-all space-y-4"
             >
               <div className="flex items-start justify-between gap-2">
-                <div>
-                  <h3 className="font-extrabold text-base text-[#263238]">{med.name}</h3>
-                  <p className="text-xs text-[#167C80] font-semibold">{med.purpose}</p>
+                <div className="flex items-center gap-3">
+                  {med.imageUrl && (
+                    <div className="w-12 h-12 rounded-xl overflow-hidden border border-[#B7D4C2] bg-white shrink-0 shadow-2xs">
+                      <img src={med.imageUrl} alt={med.name} className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                  <div>
+                    <h3 className="font-extrabold text-base text-[#263238]">{med.name}</h3>
+                    <p className="text-xs text-[#167C80] font-semibold">{med.purpose}</p>
+                    {med.pillImprint && (
+                      <span className="text-[10px] text-[#546E7A] font-mono">Imprint: {med.pillImprint}</span>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center gap-1">
                   <button

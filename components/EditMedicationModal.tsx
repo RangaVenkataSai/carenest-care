@@ -27,6 +27,8 @@ export function EditMedicationModal({
   const [purpose, setPurpose] = useState('');
   const [instructions, setInstructions] = useState('');
   const [stockCount, setStockCount] = useState(30);
+  const [imageUrl, setImageUrl] = useState('');
+  const [pillImprint, setPillImprint] = useState('');
 
   useEffect(() => {
     if (medication) {
@@ -40,6 +42,8 @@ export function EditMedicationModal({
       setPurpose(medication.purpose);
       setInstructions(medication.specialInstructions);
       setStockCount(medication.stockCount);
+      setImageUrl(medication.imageUrl || '');
+      setPillImprint(medication.pillImprint || '');
     }
   }, [medication]);
 
@@ -54,6 +58,8 @@ export function EditMedicationModal({
       form,
       pillColor,
       pillShape,
+      pillImprint: pillImprint || medication.pillImprint,
+      imageUrl: imageUrl || medication.imageUrl,
       scheduledTimes: scheduledTimes.split(',').map((s) => s.trim()).filter(Boolean),
       withFood,
       purpose,
@@ -175,6 +181,34 @@ export function EditMedicationModal({
                 type="number"
                 value={stockCount}
                 onChange={(e) => setStockCount(Number(e.target.value))}
+                className="w-full px-3 py-2 border border-[#E6E4DC] rounded-xl text-xs"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] font-bold text-[#546E7A] uppercase mb-1">
+                Pill Imprint (Printed on Tablet)
+              </label>
+              <input
+                type="text"
+                value={pillImprint}
+                onChange={(e) => setPillImprint(e.target.value)}
+                placeholder="e.g. M 500"
+                className="w-full px-3 py-2 border border-[#E6E4DC] rounded-xl text-xs font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-[#546E7A] uppercase mb-1">
+                Pill Photo Image URL (For Senior Visual ID)
+              </label>
+              <input
+                type="url"
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+                placeholder="https://images.unsplash.com/..."
                 className="w-full px-3 py-2 border border-[#E6E4DC] rounded-xl text-xs"
               />
             </div>
