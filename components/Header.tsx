@@ -17,6 +17,8 @@ interface HeaderProps {
   onToggleHighContrast: () => void;
   onViewLandingPage?: () => void;
   onOpenEmailHub?: () => void;
+  onOpenProfile?: () => void;
+  onOpenPasscodeModal?: () => void;
 }
 
 export function Header({
@@ -32,6 +34,8 @@ export function Header({
   onToggleHighContrast,
   onViewLandingPage,
   onOpenEmailHub,
+  onOpenProfile,
+  onOpenPasscodeModal,
 }: HeaderProps) {
   const unreadAlertsCount = alerts.filter((a) => !a.acknowledged).length;
 
@@ -59,11 +63,30 @@ export function Header({
             </div>
           </div>
 
-          {/* Passcode Badge & Circle ID */}
-          <div className="hidden md:flex items-center gap-2 bg-[#F8F7F2] border border-[#E6E4DC] px-3.5 py-1.5 rounded-xl text-xs">
-            <KeyRound className="w-3.5 h-3.5 text-[#167C80]" />
-            <span className="text-[#546E7A]">Care Circle:</span>
-            <strong className="text-[#263238] tracking-widest font-mono">{senior.circleCode}</strong>
+          {/* Passcode Badge & Healthcare Profile Buttons */}
+          <div className="hidden md:flex items-center gap-2">
+            <button
+              onClick={onOpenPasscodeModal}
+              className="flex items-center gap-2 bg-[#F8F7F2] hover:bg-[#eceae1] border border-[#E6E4DC] px-3.5 py-1.5 rounded-xl text-xs transition-colors cursor-pointer group"
+              title="Shared Care Passcode - Click to verify access or inspect role permissions"
+            >
+              <KeyRound className="w-3.5 h-3.5 text-[#167C80] group-hover:scale-110 transition-transform" />
+              <span className="text-[#546E7A]">Passcode:</span>
+              <strong className="text-[#263238] tracking-widest font-mono">{senior.circleCode}</strong>
+            </button>
+
+            {onOpenProfile && (
+              <button
+                onClick={onOpenProfile}
+                className="hidden lg:flex items-center gap-2 bg-white hover:bg-[#F8F7F2] border border-[#E6E4DC] hover:border-[#167C80] px-3 py-1.5 rounded-xl text-xs font-bold text-[#263238] transition-all shadow-2xs"
+                title="Manage Arthur Pendelton's Healthcare Profile (Conditions, Allergies, Doctor, Contacts)"
+              >
+                <div className="w-5 h-5 rounded-full bg-[#167C80] text-white flex items-center justify-center text-[10px] font-black">
+                  {senior.preferredName[0]}
+                </div>
+                <span>Health Profile</span>
+              </button>
+            )}
           </div>
 
           {/* Role Switcher Tabs (3 Distinct User Experiences) */}
@@ -141,6 +164,17 @@ export function Header({
               >
                 <Mail className="w-3.5 h-3.5" />
                 <span>Email Engine</span>
+              </button>
+            )}
+
+            {/* Health Profile Button (Icon on mobile / tablet) */}
+            {onOpenProfile && (
+              <button
+                onClick={onOpenProfile}
+                className="lg:hidden p-2.5 rounded-xl border border-[#E6E4DC] text-[#546E7A] hover:text-[#167C80] hover:bg-[#F8F7F2] transition-colors"
+                title="Healthcare Profile"
+              >
+                <User className="w-4 h-4" />
               </button>
             )}
 

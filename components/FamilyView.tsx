@@ -41,6 +41,7 @@ interface FamilyViewProps {
     }
   ) => void;
   onAddJournalNote?: (note: string) => void;
+  onTakeInsightAction?: (insight: AIInsight) => void;
   onAddMedication: (med: Medication) => void;
   onUpdateMedication: (med: Medication) => void;
   onDeleteMedication: (id: string) => void;
@@ -61,6 +62,7 @@ export function FamilyView({
   aiInsights,
   onTriggerEmailSimulation,
   onAddJournalNote,
+  onTakeInsightAction,
   onAddMedication,
   onUpdateMedication,
   onDeleteMedication,
@@ -465,7 +467,11 @@ export function FamilyView({
       <CareNestIntelligence
         insights={aiInsights}
         onTakeAction={(insight) => {
-          alert(`CareNest Intelligence action triggered: "${insight.title}"`);
+          if (onTakeInsightAction) {
+            onTakeInsightAction(insight);
+          } else if (onAddJournalNote) {
+            onAddJournalNote(`CareNest Intelligence Action [${insight.title}]: Handled ${insight.actionLabel}`);
+          }
         }}
       />
 

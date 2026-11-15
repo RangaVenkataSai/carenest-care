@@ -57,7 +57,17 @@ export function PasscodeModal({ isOpen, expectedPasscode, onSuccess, onClose }: 
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-6 shadow-2xl border border-[#E6E4DC] text-center animate-in zoom-in-95 duration-200">
+      <div className="relative bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-6 shadow-2xl border border-[#E6E4DC] text-center animate-in zoom-in-95 duration-200">
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="absolute top-5 right-5 p-2 rounded-xl text-[#546E7A] hover:text-[#263238] hover:bg-[#F8F7F2] transition-colors"
+            title="Close"
+          >
+            <span className="text-xl font-bold leading-none">✕</span>
+          </button>
+        )}
+
         {/* Header Icon */}
         <div className="w-14 h-14 rounded-2xl bg-[#E8F3F3] text-[#167C80] flex items-center justify-center mx-auto shadow-xs">
           <Lock className="w-7 h-7" />

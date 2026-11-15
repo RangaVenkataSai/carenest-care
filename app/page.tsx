@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   CareCircleState, UserRole, Medication, DoctorAppointment, 
-  CaregiverAlert, CareJournalEntry, ToastMessage 
+  CaregiverAlert, CareJournalEntry, ToastMessage, SeniorProfile 
 } from '@/lib/types';
 import { getInitialOrSavedState, saveState, resetToSeedData, getSavedRole, saveRole } from '@/lib/storage';
 import { Header } from '@/components/Header';
@@ -15,6 +15,7 @@ import { EmailPreviewModal, EmailModalData } from '@/components/EmailPreviewModa
 import { AlertsDrawer } from '@/components/AlertsDrawer';
 import { EmergencySOSModal } from '@/components/EmergencySOSModal';
 import { PasscodeModal } from '@/components/PasscodeModal';
+import { HealthcareProfileModal } from '@/components/HealthcareProfileModal';
 import { Toast } from '@/components/Toast';
 import { ProactiveEmailEngineModal } from '@/components/ProactiveEmailEngineModal';
 
@@ -31,6 +32,7 @@ export default function Home() {
   const [alertsOpen, setAlertsOpen] = useState(false);
   const [sosModalOpen, setSosModalOpen] = useState(false);
   const [passcodeModalOpen, setPasscodeModalOpen] = useState(false);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [emailEngineOpen, setEmailEngineOpen] = useState(false);
   const [emailModalData, setEmailModalData] = useState<EmailModalData | null>(null);
 
@@ -90,6 +92,30 @@ export default function Home() {
       setState(reset);
       addToast('Demo data reset to initial state', 'success');
     }
+  };
+
+  const handleSaveProfile = (updated: SeniorProfile) => {
+    if (!state) return;
+    const nowIso = new Date().toISOString();
+    const updatedState: CareCircleState = {
+      ...state,
+      senior: updated,
+      journal: [
+        {
+          id: `j_${Date.now()}`,
+          timestamp: nowIso,
+          authorName: role === 'elderly' ? state.senior.preferredName : role === 'family' ? 'Sarah Pendelton' : 'Nurse Elena, RN',
+          authorRole: role === 'elderly' ? 'senior' : role === 'family' ? 'family' : 'caregiver',
+          category: 'note',
+          title: 'Healthcare Profile Updated',
+          description: `Updated conditions (${updated.chronicConditions.join(', ') || 'None'}), allergies (${updated.allergies.join(', ') || 'None'}), and emergency contacts for ${updated.name}.`,
+        },
+        ...(state.journal || []),
+      ],
+    };
+    updateAndSaveState(updatedState);
+    setProfileModalOpen(false);
+    addToast('Healthcare profile updated successfully', 'success');
   };
 
   // Medication Dose actions
@@ -459,6 +485,8 @@ export default function Home() {
         onToggleHighContrast={handleToggleHighContrast}
         onViewLandingPage={() => setShowLandingPage(true)}
         onOpenEmailHub={() => setEmailEngineOpen(true)}
+        onOpenProfile={() => setProfileModalOpen(true)}
+        onOpenPasscodeModal={() => setPasscodeModalOpen(true)}
       />
 
       {/* Main Content Area */}
@@ -492,6 +520,10 @@ export default function Home() {
             aiInsights={state.aiInsights || []}
             onTriggerEmailSimulation={handleTriggerEmail}
             onAddJournalNote={handleAddJournalNote}
+            onTakeInsightAction={(insight) => {
+              addToast(`AI Insight action logged: ${insight.actionLabel}`, 'info');
+              handleAddJournalNote(`CareNest Intelligence: [${insight.title}] -> Handled action: ${insight.actionLabel}`);
+            }}
             onAddMedication={handleAddMedication}
             onUpdateMedication={handleUpdateMedication}
             onDeleteMedication={handleDeleteMedication}
@@ -530,13 +562,25 @@ export default function Home() {
 
       {/* Passcode Modal (Can be triggered whenever needed) */}
       <PasscodeModal
-        isOpen={!isPasscodeUnlocked}
+        isOpen={!isPasscodeUnlocked || passcodeModalOpen}
         expectedPasscode={state.senior.circleCode}
         onSuccess={(selectedRole) => {
           setIsPasscodeUnlocked(true);
+          setPasscodeModalOpen(false);
           handleRoleChange(selectedRole);
         }}
+        onClose={isPasscodeUnlocked ? () => setPasscodeModalOpen(false) : undefined}
       />
+
+      {/* Healthcare Profile Management Modal */}
+      {state && (
+        <HealthcareProfileModal
+          senior={state.senior}
+          isOpen={profileModalOpen}
+          onClose={() => setProfileModalOpen(false)}
+          onSaveProfile={handleSaveProfile}
+        />
+      )}
 
       {/* Notifications Drawer */}
       <AlertsDrawer

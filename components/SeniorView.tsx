@@ -1,15 +1,19 @@
 'use client';
 
 import React, { useState } from 'react';
-import { SeniorProfile, Medication, MedicationDoseLog, DoctorAppointment, DailyWellnessLog, CareUpdateNotice } from '@/lib/types';
+import { 
+  SeniorProfile, Medication, MedicationDoseLog, DoctorAppointment, 
+  DailyWellnessLog, CareUpdateNotice 
+} from '@/lib/types';
 import { 
   CheckCircle2, Clock, Volume2, Heart, ShieldAlert, Sparkles, 
   Coffee, Pill, PhoneCall, Smile, Meh, Frown, Calendar, Info, 
-  Printer, Mic, MicOff, Eye, Check, ShieldCheck, Sun, Compass
+  Printer, Mic, MicOff, Eye, Check, ShieldCheck, Sun, Compass, Languages, Globe
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { PillVerifierModal } from './PillVerifierModal';
 import { PrintableRoutine } from './PrintableRoutine';
+import { VoiceLanguage, VOICE_TRANSLATIONS, speakText } from '@/lib/voiceAssistant';
 
 interface SeniorViewProps {
   senior: SeniorProfile;
@@ -41,10 +45,12 @@ export function SeniorView({
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [voiceFeedback, setVoiceFeedback] = useState<string | null>(null);
+  const [voiceLang, setVoiceLang] = useState<VoiceLanguage>('en');
   const [zenMode, setZenMode] = useState(false);
   const [inspectMedication, setInspectMedication] = useState<Medication | null>(null);
   const [verifyingPill, setVerifyingPill] = useState<Medication | null>(null);
   const [showPrintSheet, setShowPrintSheet] = useState(false);
+  const [wellnessSuccess, setWellnessSuccess] = useState(false);
 
   // Time-aware greeting
   const hour = new Date().getHours();
@@ -71,76 +77,69 @@ export function SeniorView({
   // Pending care update requiring senior consent
   const pendingUpdate = careUpdates.find((u) => u.status === 'pending_review');
 
-  // Web Speech synthesis voice reader
+  const phrases = VOICE_TRANSLATIONS[voiceLang];
+
+  // Multilingual Speech Synthesis voice reader
   const handleReadScheduleAloud = () => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-      alert('Voice assistant is not supported by your browser.');
-      return;
-    }
+    let textToSpeak = phrases.greeting(senior.preferredName, timeGreeting) + ' ';
 
-    window.speechSynthesis.cancel();
-
-    let textToSpeak = `${timeGreeting}, ${senior.preferredName}. Let's make today a healthy day. `;
     if (pendingDoses.length === 0) {
-      textToSpeak += `You have taken all your scheduled medicines for today. You are doing wonderful!`;
+      textToSpeak += phrases.allDone(senior.preferredName);
     } else {
-      textToSpeak += `You have ${pendingDoses.length} dose ${pendingDoses.length === 1 ? 'due' : 'due today'}. `;
       if (nextDose) {
-        textToSpeak += `Your next medicine is ${nextDose.medicationName}, scheduled for ${nextDose.scheduledTime}. `;
-        if (matchingMedication?.specialInstructions) {
-          textToSpeak += `Note: ${matchingMedication.specialInstructions}`;
-        }
+        textToSpeak += phrases.nextMedication(
+          nextDose.medicationName,
+          nextDose.dosage,
+          nextDose.scheduledTime,
+          matchingMedication?.withFood
+        );
       }
     }
 
-    const utterance = new SpeechSynthesisUtterance(textToSpeak);
-    utterance.rate = 0.88;
-    utterance.pitch = 1.0;
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
-
-    window.speechSynthesis.speak(utterance);
+    speakText(
+      textToSpeak,
+      voiceLang,
+      () => setIsSpeaking(true),
+      () => setIsSpeaking(false)
+    );
   };
 
   // Interactive Voice Command Recognition
   const handleStartVoiceRecognition = () => {
     if (typeof window === 'undefined') return;
 
-    // Check for browser speech recognition
     const SpeechRecognition =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
-      // Fallback voice simulation
-      setVoiceFeedback('Listening... (Try saying "I took my pills" or "What is next?")');
+      setVoiceFeedback(`Listening (${voiceLang.toUpperCase()})... Tap a quick voice command below.`);
       setIsListening(true);
       setTimeout(() => {
-        handleExecuteVoiceCommand('what is next');
-      }, 2000);
+        handleExecuteVoiceCommand('next');
+      }, 1500);
       return;
     }
 
     try {
       const recognition = new SpeechRecognition();
-      recognition.lang = 'en-US';
+      recognition.lang = voiceLang === 'hi' ? 'hi-IN' : voiceLang === 'te' ? 'te-IN' : 'en-US';
       recognition.continuous = false;
       recognition.interimResults = false;
 
       recognition.onstart = () => {
         setIsListening(true);
-        setVoiceFeedback('CareNest is listening to you, Arthur...');
+        setVoiceFeedback(phrases.voiceListening);
       };
 
       recognition.onresult = (event: any) => {
         const transcript = event.results[0][0].transcript.toLowerCase();
-        setVoiceFeedback(`You said: "${transcript}"`);
+        setVoiceFeedback(`Recognized: "${transcript}"`);
         handleExecuteVoiceCommand(transcript);
       };
 
       recognition.onerror = () => {
         setIsListening(false);
-        setVoiceFeedback('Could not hear clearly. Tap a quick command below.');
+        setVoiceFeedback('Could not hear clearly. Tap a voice command below:');
       };
 
       recognition.onend = () => {
@@ -157,22 +156,46 @@ export function SeniorView({
     setIsListening(false);
     const cmd = command.toLowerCase();
 
-    if (cmd.includes('took') || cmd.includes('taken') || cmd.includes('done') || cmd.includes('yes')) {
+    if (
+      cmd.includes('took') ||
+      cmd.includes('taken') ||
+      cmd.includes('done') ||
+      cmd.includes('दवाई') ||
+      cmd.includes('ले ली') ||
+      cmd.includes('తీసుకున్నాను')
+    ) {
       if (nextDose) {
         handleTakeMedication(nextDose.id, nextDose.medicationName);
-        setVoiceFeedback(`✓ Marked ${nextDose.medicationName} as taken by voice command!`);
+        setVoiceFeedback(`✓ Marked ${nextDose.medicationName} taken via voice command!`);
       }
-    } else if (cmd.includes('next') || cmd.includes('what') || cmd.includes('schedule')) {
+    } else if (
+      cmd.includes('next') ||
+      cmd.includes('what') ||
+      cmd.includes('अगली') ||
+      cmd.includes('తర్వాతి')
+    ) {
       handleReadScheduleAloud();
-      setVoiceFeedback('Reading your current schedule aloud.');
-    } else if (cmd.includes('sos') || cmd.includes('help') || cmd.includes('emergency')) {
+      setVoiceFeedback('Reading schedule aloud.');
+    } else if (
+      cmd.includes('sos') ||
+      cmd.includes('help') ||
+      cmd.includes('emergency') ||
+      cmd.includes('मदद') ||
+      cmd.includes('సహాయం')
+    ) {
       onTriggerSOS();
-      setVoiceFeedback('Activating Emergency Assistance beacon!');
-    } else if (cmd.includes('daughter') || cmd.includes('sarah') || cmd.includes('call')) {
+      setVoiceFeedback('Emergency SOS beacon activated!');
+    } else if (
+      cmd.includes('daughter') ||
+      cmd.includes('sarah') ||
+      cmd.includes('call') ||
+      cmd.includes('फोन') ||
+      cmd.includes('కాల్')
+    ) {
       window.location.href = `tel:${senior.emergencyContact.phone}`;
       setVoiceFeedback(`Calling ${senior.emergencyContact.name}...`);
     } else {
-      setVoiceFeedback(`Understood: "${command}". All your routines are up to date!`);
+      setVoiceFeedback(`Processed: "${command}". Schedule is synchronized.`);
     }
   };
 
@@ -204,13 +227,17 @@ export function SeniorView({
       // Audio not permitted
     }
 
-    if ('speechSynthesis' in window) {
-      const confirmSpeech = new SpeechSynthesisUtterance(`Wonderful job, ${senior.preferredName}! ${medName} marked as taken.`);
-      confirmSpeech.rate = 0.95;
-      window.speechSynthesis.speak(confirmSpeech);
-    }
+    // Multilingual spoken positive reinforcement
+    const confirmText = phrases.confirmedTaken(senior.preferredName, medName);
+    speakText(confirmText, voiceLang);
 
     onMarkDoseTaken(logId);
+  };
+
+  const handleWellnessSubmit = (mood: 'thriving' | 'good' | 'tired' | 'unwell', pain: number) => {
+    onLogWellness(mood, pain);
+    setWellnessSuccess(true);
+    setTimeout(() => setWellnessSuccess(false), 3000);
   };
 
   // ZEN FOCUS MODE: One Thing At A Time (Cognitive Friendly)
@@ -290,28 +317,62 @@ export function SeniorView({
 
   return (
     <div className="space-y-8 pb-16 max-w-5xl mx-auto">
-      {/* 1. Personalized Welcome & Accessibility Action Bar */}
+      {/* 1. Personalized Welcome & Multilingual Voice Action Bar */}
       <section className="bg-gradient-to-r from-[#167C80] to-[#126366] text-white rounded-3xl p-6 sm:p-8 shadow-xs relative overflow-hidden">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
+          <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 text-xs font-bold uppercase tracking-wider">
                 👴 Senior Independence Portal
               </span>
+
+              {/* Language Selector Pills */}
+              <div className="inline-flex items-center bg-black/25 backdrop-blur-xs p-0.5 rounded-full border border-white/20 text-xs font-bold">
+                <button
+                  onClick={() => setVoiceLang('en')}
+                  className={`px-2.5 py-0.5 rounded-full transition-all ${
+                    voiceLang === 'en' ? 'bg-white text-[#167C80]' : 'text-white hover:text-teal-200'
+                  }`}
+                >
+                  English
+                </button>
+                <button
+                  onClick={() => setVoiceLang('hi')}
+                  className={`px-2.5 py-0.5 rounded-full transition-all ${
+                    voiceLang === 'hi' ? 'bg-white text-[#167C80]' : 'text-white hover:text-teal-200'
+                  }`}
+                >
+                  हिन्दी (Hindi)
+                </button>
+                <button
+                  onClick={() => setVoiceLang('te')}
+                  className={`px-2.5 py-0.5 rounded-full transition-all ${
+                    voiceLang === 'te' ? 'bg-white text-[#167C80]' : 'text-white hover:text-teal-200'
+                  }`}
+                >
+                  తెలుగు (Telugu)
+                </button>
+              </div>
+
               <button
                 onClick={() => setZenMode(true)}
                 className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white text-[#167C80] text-xs font-bold hover:bg-[#F8F7F2] transition-colors"
                 title="Simplified single-action interface"
               >
                 <Compass className="w-3.5 h-3.5" />
-                <span>Zen Focus Mode</span>
+                <span>Zen Mode</span>
               </button>
             </div>
+
             <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
               {timeGreeting}, {senior.preferredName}.
             </h1>
             <p className="text-teal-100 text-lg font-medium">
-              Let&apos;s make today a healthy day.
+              {voiceLang === 'hi'
+                ? 'आज का दिन आपके लिए स्वस्थ और मंगलमय रहे।'
+                : voiceLang === 'te'
+                ? 'ఈ రోజు మీ ఆరోగ్యం బాగుండాలని కోరుకుంటున్నాము.'
+                : "Let's make today a healthy day."}
             </p>
           </div>
 
@@ -326,7 +387,7 @@ export function SeniorView({
               }`}
             >
               <Volume2 className="w-5 h-5 text-[#167C80]" />
-              <span>{isSpeaking ? 'Reading Aloud...' : 'Read My Schedule'}</span>
+              <span>{phrases.readScheduleLabel}</span>
             </button>
 
             {/* Hands-Free Voice Assistant Button */}
@@ -339,19 +400,19 @@ export function SeniorView({
               }`}
             >
               {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-              <span>{isListening ? 'Listening...' : 'Voice Command'}</span>
+              <span>{phrases.voiceButtonLabel}</span>
             </button>
 
             {/* Printable Fridge Sheet */}
             <button
               onClick={() => setShowPrintSheet(true)}
               className="p-3.5 rounded-2xl bg-white/20 hover:bg-white/30 text-white border border-white/30 transition-all"
-              title="Print Large Fridge Routine"
+              title="Print Large Fridge Routine Sheet"
             >
               <Printer className="w-5 h-5" />
             </button>
 
-            {/* Quick Emergency SOS */}
+            {/* Emergency SOS */}
             <button
               onClick={onTriggerSOS}
               className="flex items-center gap-2 px-5 py-3.5 rounded-2xl font-bold text-base bg-[#D32F2F] hover:bg-red-700 text-white shadow-sm active:scale-95 border-2 border-red-400"
@@ -362,21 +423,40 @@ export function SeniorView({
           </div>
         </div>
 
-        {/* Voice Feedback Bar */}
+        {/* Localized Voice Command Simulation Pills */}
+        <div className="mt-4 pt-3 border-t border-white/20 flex flex-wrap items-center gap-2 text-xs">
+          <span className="text-teal-200 text-[11px] font-semibold">
+            {voiceLang === 'hi' ? 'आवाज़ से निर्देश दें:' : voiceLang === 'te' ? 'వాయిస్ సూచనలు:' : 'Quick Voice Commands:'}
+          </span>
+          {phrases.quickCommands.map((qc, idx) => (
+            <button
+              key={idx}
+              onClick={() => {
+                setVoiceFeedback(`Command: "${qc.speech}"`);
+                handleExecuteVoiceCommand(qc.command);
+              }}
+              className="px-3 py-1 rounded-xl bg-white/15 hover:bg-white/30 text-white font-medium text-xs border border-white/20 transition-all active:scale-95"
+            >
+              {qc.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Voice Feedback Display */}
         {voiceFeedback && (
-          <div className="mt-4 pt-3 border-t border-white/20 text-xs text-teal-100 flex items-center justify-between">
-            <span className="font-semibold">{voiceFeedback}</span>
+          <div className="mt-2 text-xs text-amber-200 font-bold flex items-center justify-between">
+            <span>{voiceFeedback}</span>
             <button
               onClick={() => setVoiceFeedback(null)}
               className="text-white hover:underline text-[11px]"
             >
-              Dismiss
+              ✕
             </button>
           </div>
         )}
       </section>
 
-      {/* 2. Elderly Decision & Consent Gate (Promoting Patient Autonomy) */}
+      {/* 2. Elderly Decision & Consent Gate */}
       {pendingUpdate && (
         <section className="bg-[#E8F3F3] rounded-3xl border-2 border-[#167C80] p-6 shadow-sm space-y-4 animate-in slide-in-from-top-3 duration-200">
           <div className="flex items-center justify-between border-b border-[#B7D4C2] pb-3">
@@ -386,7 +466,7 @@ export function SeniorView({
               </span>
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-[#167C80]">
-                  Decision & Consent Gate (You are at the Center of Care)
+                  Patient Autonomy & Consent Gate
                 </span>
                 <h3 className="text-base font-bold text-[#263238]">{pendingUpdate.title}</h3>
               </div>
@@ -501,7 +581,66 @@ export function SeniorView({
         </div>
       </section>
 
-      {/* 4. Primary Next Medication Focus Card with Visual Pill Verifier */}
+      {/* 4. Daily Senior Wellness Check-in (Re-integrated & Verified) */}
+      <section className="bg-white rounded-3xl border border-[#E6E4DC] p-6 sm:p-7 shadow-xs space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#E6E4DC] pb-4">
+          <div>
+            <h3 className="text-lg font-bold text-[#263238] flex items-center gap-2">
+              <Smile className="w-5 h-5 text-[#167C80]" />
+              <span>How are you feeling right now, Arthur?</span>
+            </h3>
+            <p className="text-xs text-[#546E7A]">
+              One tap logs your wellness state directly to Sarah and Nurse Elena&apos;s feed
+            </p>
+          </div>
+
+          {wellnessSuccess && (
+            <span className="px-3.5 py-1.5 rounded-xl bg-[#F0F6F2] text-[#1B8354] font-bold text-xs border border-[#B7D4C2] animate-bounce">
+              ✓ Logged to Family Feed!
+            </span>
+          )}
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <button
+            onClick={() => handleWellnessSubmit('thriving', 0)}
+            className="p-4 rounded-2xl border-2 border-[#B7D4C2] bg-[#F0F6F2] hover:bg-[#d9ede1] active:scale-95 transition-all text-center group"
+          >
+            <Smile className="w-8 h-8 text-[#1B8354] mx-auto mb-1.5 group-hover:scale-110 transition-transform" />
+            <div className="font-extrabold text-sm text-[#1B8354]">Feeling Great</div>
+            <div className="text-[10px] text-[#546E7A]">Energetic, no pain</div>
+          </button>
+
+          <button
+            onClick={() => handleWellnessSubmit('good', 2)}
+            className="p-4 rounded-2xl border-2 border-[#E6E4DC] bg-[#F8F7F2] hover:bg-[#E8F3F3] active:scale-95 transition-all text-center group"
+          >
+            <Smile className="w-8 h-8 text-[#167C80] mx-auto mb-1.5 group-hover:scale-110 transition-transform" />
+            <div className="font-extrabold text-sm text-[#263238]">Pretty Good</div>
+            <div className="text-[10px] text-[#546E7A]">Normal daily rhythm</div>
+          </button>
+
+          <button
+            onClick={() => handleWellnessSubmit('tired', 4)}
+            className="p-4 rounded-2xl border-2 border-amber-200 bg-amber-50/70 hover:bg-amber-100/70 active:scale-95 transition-all text-center group"
+          >
+            <Meh className="w-8 h-8 text-amber-600 mx-auto mb-1.5 group-hover:scale-110 transition-transform" />
+            <div className="font-extrabold text-sm text-amber-900">A Bit Tired</div>
+            <div className="text-[10px] text-[#546E7A]">Need some rest</div>
+          </button>
+
+          <button
+            onClick={() => handleWellnessSubmit('unwell', 7)}
+            className="p-4 rounded-2xl border-2 border-[#F2A58A] bg-[#FDF3EF] hover:bg-[#fcdfd6] active:scale-95 transition-all text-center group"
+          >
+            <Frown className="w-8 h-8 text-[#D32F2F] mx-auto mb-1.5 group-hover:scale-110 transition-transform" />
+            <div className="font-extrabold text-sm text-[#D32F2F]">Not Feeling Well</div>
+            <div className="text-[10px] text-[#546E7A]">Alerts care team</div>
+          </button>
+        </div>
+      </section>
+
+      {/* 5. Primary Next Medication Focus Card with Visual Pill Verifier */}
       {nextDose && (
         <section className="bg-white rounded-3xl border-2 border-[#167C80] shadow-md p-6 sm:p-8 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E6E4DC] pb-4">
@@ -592,7 +731,7 @@ export function SeniorView({
         </section>
       )}
 
-      {/* 5. Today's Full Medication List Overview */}
+      {/* 6. Today's Full Medication List Overview */}
       <section className="bg-white rounded-3xl border border-[#E6E4DC] p-6 sm:p-7 shadow-xs space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-xl font-bold text-[#263238] flex items-center gap-2">
@@ -642,13 +781,23 @@ export function SeniorView({
 
                 <div className="flex items-center gap-2 self-end sm:self-center">
                   {med && (
-                    <button
-                      onClick={() => setVerifyingPill(med)}
-                      className="p-2 text-[#546E7A] hover:text-[#167C80] rounded-lg border border-[#E6E4DC]"
-                      title="Verify pill in hand"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
+                    <>
+                      <button
+                        onClick={() => setInspectMedication(med)}
+                        className="p-2 text-[#546E7A] hover:text-[#167C80] rounded-lg border border-[#E6E4DC] hover:bg-[#F8F7F2]"
+                        title="View medication instructions"
+                      >
+                        <Info className="w-4 h-4" />
+                      </button>
+
+                      <button
+                        onClick={() => setVerifyingPill(med)}
+                        className="p-2 text-[#546E7A] hover:text-[#167C80] rounded-lg border border-[#E6E4DC] hover:bg-[#F8F7F2]"
+                        title="Verify pill in hand"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                    </>
                   )}
 
                   {isTaken ? (
@@ -670,7 +819,7 @@ export function SeniorView({
         </div>
       </section>
 
-      {/* 6. Upcoming Appointment Card */}
+      {/* 7. Upcoming Appointment Card */}
       {nextAppointment && (
         <section className="bg-white rounded-3xl border border-[#E6E4DC] p-6 sm:p-7 shadow-xs space-y-4">
           <div className="flex items-center justify-between border-b border-[#E6E4DC] pb-3">
@@ -702,7 +851,7 @@ export function SeniorView({
         </section>
       )}
 
-      {/* 7. Quick Assistance Channels */}
+      {/* 8. Quick Assistance Channels */}
       <section className="bg-white rounded-3xl border border-[#E6E4DC] p-6 sm:p-7 shadow-xs space-y-4">
         <h3 className="text-xl font-bold text-[#263238] flex items-center gap-2">
           <PhoneCall className="w-5 h-5 text-[#167C80]" />
@@ -749,6 +898,95 @@ export function SeniorView({
           }
         }}
       />
+
+      {/* Senior Medication Instructions & Guidance Modal */}
+      {inspectMedication && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 space-y-6 shadow-2xl border-2 border-[#167C80] animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-[#E6E4DC] pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-[#E8F3F3] text-[#167C80] flex items-center justify-center font-bold">
+                  <Pill className="w-6 h-6" />
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-[#167C80] tracking-wider">
+                    Medication Instructions
+                  </span>
+                  <h3 className="text-2xl font-black text-[#263238]">{inspectMedication.name}</h3>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setInspectMedication(null)}
+                className="text-[#546E7A] hover:text-[#263238] p-2 rounded-xl text-xl font-bold hover:bg-[#F8F7F2]"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4 text-[#263238]">
+              <div className="p-4 rounded-2xl bg-[#F8F7F2] border border-[#E6E4DC] grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <span className="text-[11px] font-bold uppercase text-[#546E7A] block">Dosage</span>
+                  <strong className="text-base text-[#167C80]">{inspectMedication.dosage}</strong>
+                </div>
+                <div>
+                  <span className="text-[11px] font-bold uppercase text-[#546E7A] block">Food Rule</span>
+                  <strong className="text-base text-[#263238] capitalize">
+                    {inspectMedication.withFood?.replace('_', ' ') || 'Anytime'}
+                  </strong>
+                </div>
+              </div>
+
+              {inspectMedication.purpose && (
+                <div className="text-sm">
+                  <span className="text-[11px] font-bold uppercase text-[#546E7A] block">Purpose</span>
+                  <p className="font-semibold text-[#263238]">{inspectMedication.purpose}</p>
+                </div>
+              )}
+
+              {inspectMedication.specialInstructions && (
+                <div className="p-4 rounded-2xl bg-[#E8F3F3] border border-[#B7D4C2] space-y-1">
+                  <span className="text-xs font-bold uppercase text-[#167C80] block">
+                    Important Guidance
+                  </span>
+                  <p className="text-sm font-semibold text-[#263238] leading-relaxed">
+                    💡 {inspectMedication.specialInstructions}
+                  </p>
+                </div>
+              )}
+
+              {inspectMedication.pillColor && (
+                <div className="text-xs text-[#546E7A]">
+                  Pill Appearance: <strong>{inspectMedication.pillColor}</strong> ({inspectMedication.pillShape || 'Round'})
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <button
+                onClick={() => {
+                  const speech = `${inspectMedication.name}, dosage ${inspectMedication.dosage}. ${
+                    inspectMedication.specialInstructions || ''
+                  }. Food requirement: ${inspectMedication.withFood?.replace('_', ' ') || 'anytime'}.`;
+                  speakText(speech, voiceLang);
+                }}
+                className="flex-1 py-3.5 px-4 rounded-2xl bg-[#E8F3F3] hover:bg-[#d8eaea] text-[#167C80] font-bold text-sm flex items-center justify-center gap-2 border border-[#B7D4C2]"
+              >
+                <Volume2 className="w-5 h-5" />
+                <span>Read Aloud</span>
+              </button>
+
+              <button
+                onClick={() => setInspectMedication(null)}
+                className="py-3.5 px-6 rounded-2xl bg-[#167C80] hover:bg-[#126366] text-white font-bold text-sm shadow-xs"
+              >
+                Understood / Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Printable Routine Sheet */}
       {showPrintSheet && (
