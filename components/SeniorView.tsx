@@ -13,7 +13,7 @@ import {
 import confetti from 'canvas-confetti';
 import { PillVerifierModal } from './PillVerifierModal';
 import { PrintableRoutine } from './PrintableRoutine';
-import { VoiceLanguage, VOICE_TRANSLATIONS, speakText } from '@/lib/voiceAssistant';
+import { VoiceLanguage, VOICE_TRANSLATIONS, speakText, stopSpeech } from '@/lib/voiceAssistant';
 
 interface SeniorViewProps {
   senior: SeniorProfile;
@@ -22,6 +22,8 @@ interface SeniorViewProps {
   appointments: DoctorAppointment[];
   wellnessLogs: DailyWellnessLog[];
   careUpdates?: CareUpdateNotice[];
+  voiceLang?: VoiceLanguage;
+  onVoiceLangChange?: (lang: VoiceLanguage) => void;
   onMarkDoseTaken: (logId: string) => void;
   onSnoozeDose: (logId: string) => void;
   onLogWellness: (mood: 'thriving' | 'good' | 'tired' | 'unwell', pain: number) => void;
@@ -36,6 +38,8 @@ export function SeniorView({
   appointments,
   wellnessLogs,
   careUpdates = [],
+  voiceLang: propVoiceLang,
+  onVoiceLangChange,
   onMarkDoseTaken,
   onSnoozeDose,
   onLogWellness,
@@ -45,12 +49,32 @@ export function SeniorView({
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [voiceFeedback, setVoiceFeedback] = useState<string | null>(null);
-  const [voiceLang, setVoiceLang] = useState<VoiceLanguage>('en');
+  const [localVoiceLang, setLocalVoiceLang] = useState<VoiceLanguage>('en');
   const [zenMode, setZenMode] = useState(false);
   const [inspectMedication, setInspectMedication] = useState<Medication | null>(null);
   const [verifyingPill, setVerifyingPill] = useState<Medication | null>(null);
   const [showPrintSheet, setShowPrintSheet] = useState(false);
   const [wellnessSuccess, setWellnessSuccess] = useState(false);
+
+  const voiceLang = propVoiceLang || localVoiceLang;
+
+  const handleLanguageChange = (newLang: VoiceLanguage) => {
+    if (onVoiceLangChange) {
+      onVoiceLangChange(newLang);
+    } else {
+      setLocalVoiceLang(newLang);
+    }
+
+    const phrasesForLang = VOICE_TRANSLATIONS[newLang];
+    setVoiceFeedback(phrasesForLang.languageSelected);
+
+    speakText(
+      phrasesForLang.languageSelected,
+      newLang,
+      () => setIsSpeaking(true),
+      () => setIsSpeaking(false)
+    );
+  };
 
   // Time-aware greeting
   const hour = new Date().getHours();
@@ -81,6 +105,12 @@ export function SeniorView({
 
   // Multilingual Speech Synthesis voice reader
   const handleReadScheduleAloud = () => {
+    if (isSpeaking) {
+      stopSpeech();
+      setIsSpeaking(false);
+      return;
+    }
+
     let textToSpeak = phrases.greeting(senior.preferredName, timeGreeting) + ' ';
 
     if (pendingDoses.length === 0) {
@@ -329,7 +359,7 @@ export function SeniorView({
               {/* Language Selector Pills */}
               <div className="inline-flex items-center bg-black/25 backdrop-blur-xs p-0.5 rounded-full border border-white/20 text-xs font-bold">
                 <button
-                  onClick={() => setVoiceLang('en')}
+                  onClick={() => handleLanguageChange('en')}
                   className={`px-2.5 py-0.5 rounded-full transition-all ${
                     voiceLang === 'en' ? 'bg-white text-[#167C80]' : 'text-white hover:text-teal-200'
                   }`}
@@ -337,7 +367,7 @@ export function SeniorView({
                   English
                 </button>
                 <button
-                  onClick={() => setVoiceLang('hi')}
+                  onClick={() => handleLanguageChange('hi')}
                   className={`px-2.5 py-0.5 rounded-full transition-all ${
                     voiceLang === 'hi' ? 'bg-white text-[#167C80]' : 'text-white hover:text-teal-200'
                   }`}
@@ -345,7 +375,7 @@ export function SeniorView({
                   हिन्दी (Hindi)
                 </button>
                 <button
-                  onClick={() => setVoiceLang('te')}
+                  onClick={() => handleLanguageChange('te')}
                   className={`px-2.5 py-0.5 rounded-full transition-all ${
                     voiceLang === 'te' ? 'bg-white text-[#167C80]' : 'text-white hover:text-teal-200'
                   }`}

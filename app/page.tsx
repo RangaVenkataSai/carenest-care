@@ -5,7 +5,8 @@ import {
   CareCircleState, UserRole, Medication, DoctorAppointment, 
   CaregiverAlert, CareJournalEntry, ToastMessage, SeniorProfile 
 } from '@/lib/types';
-import { getInitialOrSavedState, saveState, resetToSeedData, getSavedRole, saveRole } from '@/lib/storage';
+import { getInitialOrSavedState, saveState, resetToSeedData, getSavedRole, saveRole, getSavedVoiceLang, saveVoiceLang } from '@/lib/storage';
+import { VoiceLanguage } from '@/lib/voiceAssistant';
 import { Header } from '@/components/Header';
 import { SeniorView } from '@/components/SeniorView';
 import { FamilyView } from '@/components/FamilyView';
@@ -24,6 +25,7 @@ export default function Home() {
   const [role, setRole] = useState<UserRole>('elderly');
   const [fontSize, setFontSize] = useState<'normal' | 'large' | 'xlarge'>('normal');
   const [highContrast, setHighContrast] = useState(false);
+  const [voiceLang, setVoiceLang] = useState<VoiceLanguage>('en');
   const [isPasscodeUnlocked, setIsPasscodeUnlocked] = useState(true);
   const [showLandingPage, setShowLandingPage] = useState(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -40,8 +42,10 @@ export default function Home() {
   useEffect(() => {
     const saved = getInitialOrSavedState();
     const savedRole = getSavedRole();
+    const savedLang = getSavedVoiceLang();
     setState(saved);
     setRole(savedRole);
+    setVoiceLang(savedLang);
   }, []);
 
   const addToast = (message: string, type: 'success' | 'warning' | 'info' = 'success') => {
@@ -84,6 +88,13 @@ export default function Home() {
   const handleToggleHighContrast = () => {
     setHighContrast(!highContrast);
     addToast(`High Contrast Mode: ${!highContrast ? 'ON' : 'OFF'}`, 'info');
+  };
+
+  const handleVoiceLangChange = (newLang: VoiceLanguage) => {
+    setVoiceLang(newLang);
+    saveVoiceLang(newLang);
+    const label = newLang === 'hi' ? 'हिन्दी (Hindi)' : newLang === 'te' ? 'తెలుగు (Telugu)' : 'English';
+    addToast(`Voice Assistant: ${label}`, 'info');
   };
 
   const handleResetData = () => {
@@ -483,6 +494,8 @@ export default function Home() {
         onToggleFontSize={handleToggleFontSize}
         highContrast={highContrast}
         onToggleHighContrast={handleToggleHighContrast}
+        voiceLang={voiceLang}
+        onVoiceLangChange={handleVoiceLangChange}
         onViewLandingPage={() => setShowLandingPage(true)}
         onOpenEmailHub={() => setEmailEngineOpen(true)}
         onOpenProfile={() => setProfileModalOpen(true)}
@@ -499,6 +512,8 @@ export default function Home() {
             appointments={state.appointments}
             wellnessLogs={state.wellnessLogs}
             careUpdates={state.careUpdates || []}
+            voiceLang={voiceLang}
+            onVoiceLangChange={handleVoiceLangChange}
             onMarkDoseTaken={handleMarkDoseTaken}
             onSnoozeDose={handleSnoozeDose}
             onLogWellness={handleLogWellness}

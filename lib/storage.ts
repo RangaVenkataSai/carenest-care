@@ -2,10 +2,12 @@
 
 import { CareCircleState, Medication, MedicationDoseLog, DoctorAppointment, CaregiverAlert, DailyWellnessLog, UserRole } from './types';
 import { INITIAL_STATE } from './seedData';
+import { VoiceLanguage } from './voiceAssistant';
 
 const STORAGE_KEY = 'carenest_state_v1';
 const ROLE_KEY = 'carenest_current_role_v1';
 const AUTH_KEY = 'carenest_auth_token_v1';
+const LANG_KEY = 'carenest_voice_lang_v1';
 
 export function getInitialOrSavedState(): CareCircleState {
   if (typeof window === 'undefined') {
@@ -56,4 +58,14 @@ export function getAuthPasscode(): string | null {
 export function saveAuthPasscode(code: string): void {
   if (typeof window === 'undefined') return;
   localStorage.setItem(AUTH_KEY, code);
+}
+
+export function getSavedVoiceLang(): VoiceLanguage {
+  if (typeof window === 'undefined') return 'en';
+  return (localStorage.getItem(LANG_KEY) as VoiceLanguage) || 'en';
+}
+
+export function saveVoiceLang(lang: VoiceLanguage): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(LANG_KEY, lang);
 }

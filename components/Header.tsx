@@ -2,7 +2,8 @@
 
 import React from 'react';
 import { UserRole, SeniorProfile, CaregiverAlert } from '@/lib/types';
-import { Shield, Heart, Stethoscope, User, Bell, RefreshCw, KeyRound, Type, Eye, Home, Mail } from 'lucide-react';
+import { Shield, Heart, Stethoscope, User, Bell, RefreshCw, KeyRound, Type, Eye, Home, Mail, Languages } from 'lucide-react';
+import { VoiceLanguage } from '@/lib/voiceAssistant';
 
 interface HeaderProps {
   senior: SeniorProfile;
@@ -15,6 +16,8 @@ interface HeaderProps {
   onToggleFontSize: () => void;
   highContrast: boolean;
   onToggleHighContrast: () => void;
+  voiceLang?: VoiceLanguage;
+  onVoiceLangChange?: (lang: VoiceLanguage) => void;
   onViewLandingPage?: () => void;
   onOpenEmailHub?: () => void;
   onOpenProfile?: () => void;
@@ -32,6 +35,8 @@ export function Header({
   onToggleFontSize,
   highContrast,
   onToggleHighContrast,
+  voiceLang = 'en',
+  onVoiceLangChange,
   onViewLandingPage,
   onOpenEmailHub,
   onOpenProfile,
@@ -131,8 +136,42 @@ export function Header({
             </button>
           </div>
 
-          {/* Accessibility Controls & Landing Switcher */}
+          {/* Accessibility Controls & Multilingual Audio Selector */}
           <div className="flex items-center gap-2">
+            {/* Multilingual Voice Language Switcher */}
+            {onVoiceLangChange && (
+              <div className="hidden sm:flex items-center bg-[#F8F7F2] p-1 rounded-xl border border-[#E6E4DC] text-xs font-bold text-[#263238]">
+                <Languages className="w-3.5 h-3.5 text-[#167C80] ml-1.5 mr-1" />
+                <button
+                  onClick={() => onVoiceLangChange('en')}
+                  className={`px-2 py-1 rounded-lg transition-all ${
+                    voiceLang === 'en' ? 'bg-[#167C80] text-white shadow-2xs' : 'text-[#546E7A] hover:text-[#263238]'
+                  }`}
+                  title="English Voice Assistant"
+                >
+                  EN
+                </button>
+                <button
+                  onClick={() => onVoiceLangChange('hi')}
+                  className={`px-2 py-1 rounded-lg transition-all ${
+                    voiceLang === 'hi' ? 'bg-[#167C80] text-white shadow-2xs' : 'text-[#546E7A] hover:text-[#263238]'
+                  }`}
+                  title="हिन्दी (Hindi) Voice Assistant"
+                >
+                  हिन्दी
+                </button>
+                <button
+                  onClick={() => onVoiceLangChange('te')}
+                  className={`px-2 py-1 rounded-lg transition-all ${
+                    voiceLang === 'te' ? 'bg-[#167C80] text-white shadow-2xs' : 'text-[#546E7A] hover:text-[#263238]'
+                  }`}
+                  title="తెలుగు (Telugu) Voice Assistant"
+                >
+                  తెలుగు
+                </button>
+              </div>
+            )}
+
             {/* High Contrast Mode */}
             <button
               onClick={onToggleHighContrast}

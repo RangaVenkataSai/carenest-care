@@ -7,6 +7,7 @@ export interface LocalizedPhrases {
   confirmedTaken: (name: string, medName: string) => string;
   snoozed: () => string;
   emergency: () => string;
+  languageSelected: string;
   voiceListening: string;
   voiceButtonLabel: string;
   readScheduleLabel: string;
@@ -21,11 +22,15 @@ export const VOICE_TRANSLATIONS: Record<VoiceLanguage, LocalizedPhrases> = {
   en: {
     greeting: (name, timeGreeting) => `${timeGreeting}, ${name}. Let's make today a healthy day.`,
     nextMedication: (name, dosage, time, food) =>
-      `Your next medicine is ${name}, dosage ${dosage}, scheduled for ${time}. ${food ? `Please take ${food.replace('_', ' ')}.` : ''}`,
-    allDone: (name) => `Wonderful job ${name}! All your scheduled medicines for today have been taken. Rest and stay hydrated!`,
+      `Your next medicine is ${name}, dosage ${dosage}, scheduled for ${time}. ${
+        food ? `Please take ${food.replace('_', ' ')}.` : ''
+      }`,
+    allDone: (name) =>
+      `Wonderful job ${name}! All your scheduled medicines for today have been taken. Rest and stay hydrated!`,
     confirmedTaken: (name, medName) => `Great job ${name}! ${medName} has been marked as taken.`,
     snoozed: () => 'Reminder snoozed for 15 minutes. We will remind you shortly.',
     emergency: () => 'Emergency assistance signal activated! Notifying family and caregiver immediately.',
+    languageSelected: 'English selected. CareNest is ready to assist you.',
     voiceListening: 'CareNest is listening... Speak your command now.',
     voiceButtonLabel: 'Voice Command',
     readScheduleLabel: 'Read My Schedule',
@@ -39,11 +44,15 @@ export const VOICE_TRANSLATIONS: Record<VoiceLanguage, LocalizedPhrases> = {
   hi: {
     greeting: (name, timeGreeting) => `नमस्ते ${name} जी! आज का दिन आपके लिए स्वस्थ और मंगलमय रहे।`,
     nextMedication: (name, dosage, time, food) =>
-      `आपकी अगली दवाई ${name} है, मात्रा ${dosage}, जो ${time} बजे लेनी है। ${food ? 'कृपया इसे भोजन के निर्देशानुसार लें।' : ''}`,
-    allDone: (name) => `बहुत खूब ${name} जी! आज की सभी निर्धारित दवाइयाँ समय पर ले ली गई हैं। आप बहुत अच्छा कर रहे हैं।`,
+      `आपकी अगली दवाई ${name} है, मात्रा ${dosage}, जो ${time} बजे लेनी है। ${
+        food ? 'कृपया इसे भोजन के निर्देशानुसार लें।' : ''
+      }`,
+    allDone: (name) =>
+      `बहुत खूब ${name} जी! आज की सभी निर्धारित दवाइयाँ समय पर ले ली गई हैं। आप बहुत अच्छा कर रहे हैं।`,
     confirmedTaken: (name, medName) => `शाबाश ${name} जी! ${medName} दवाई सफलतापूर्वक दर्ज कर ली गई है।`,
     snoozed: () => '15 मिनट के लिए रिमाइंडर सेट कर दिया गया है। हम आपको फिर से याद दिलाएंगे।',
     emergency: () => 'आपातकालीन सहायता संकेत सक्रिय कर दिया गया है! परिवार और नर्स को सूचित किया जा रहा है।',
+    languageSelected: 'हिंदी भाषा चुनी गई। केयरनेस्ट आपकी सहायता के लिए तैयार है।',
     voiceListening: 'केयरनेस्ट आपकी बात सुन रहा है... कृपया बोलें।',
     voiceButtonLabel: 'आवाज़ से निर्देश (Voice)',
     readScheduleLabel: 'दवाइयों की सूची सुनें',
@@ -57,11 +66,15 @@ export const VOICE_TRANSLATIONS: Record<VoiceLanguage, LocalizedPhrases> = {
   te: {
     greeting: (name, timeGreeting) => `నమస్కారం ${name} గారు! ఈ రోజు మీ ఆరోగ్యం బాగుండాలని కోరుకుంటున్నాము.`,
     nextMedication: (name, dosage, time, food) =>
-      `మీ తర్వాతి మందు ${name}, మోతాదు ${dosage}, సమయం ${time} గంటలకు తీసుకోవాలి. ${food ? 'దయచేసి భోజన సూచనల ప్రకారం తీసుకోండి.' : ''}`,
-    allDone: (name) => `చాలా సంతోషం ${name} గారు! ఈ రోజుకు సంబంధించిన అన్ని మందులు విజయవంతంగా తీసుకున్నారు. విశ్రాంతి తీసుకోండి!`,
+      `మీ తర్వాతి మందు ${name}, మోతాదు ${dosage}, సమయం ${time} గంటలకు తీసుకోవాలి. ${
+        food ? 'దయచేసి భోజన సూచనల ప్రకారం తీసుకోండి.' : ''
+      }`,
+    allDone: (name) =>
+      `చాలా సంతోషం ${name} గారు! ఈ రోజుకు సంబంధించిన అన్ని మందులు విజయవంతంగా తీసుకున్నారు. విశ్రాంతి తీసుకోండి!`,
     confirmedTaken: (name, medName) => `చాలా మంచిది ${name} గారు! ${medName} మందు తీసుకున్నట్లు నమోదు చేయబడింది.`,
     snoozed: () => 'మందు సమయాన్ని 15 నిమిషాలు వాయిదా వేయడం జరిగింది. త్వరలోనే మళ్లీ గుర్తుచేస్తాము.',
     emergency: () => 'అత్యవసర సహాయ సంకేతం పంపబడింది! కుటుంబ సభ్యులకు మరియు నర్సుకు వెంటనే సమాచారం అందింది.',
+    languageSelected: 'తెలుగు భాష ఎంపిక చేయబడింది. కేర్‌నెస్ట్ మీకు సహాయం చేయడానికి సిద్ధంగా ఉంది.',
     voiceListening: 'కేర్‌నెస్ట్ మీ మాట వింటోంది... దయచేసి మాట్లాడండి.',
     voiceButtonLabel: 'వాయిస్ కమాండ్ (తెలుగు)',
     readScheduleLabel: 'మందుల వివరాలు వినండి',
@@ -74,38 +87,130 @@ export const VOICE_TRANSLATIONS: Record<VoiceLanguage, LocalizedPhrases> = {
   },
 };
 
-export function speakText(text: string, lang: VoiceLanguage, onStart?: () => void, onEnd?: () => void) {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+let activeAudio: HTMLAudioElement | null = null;
 
-  window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.rate = 0.88;
-  utterance.pitch = 1.0;
+export function stopSpeech() {
+  if (typeof window === 'undefined') return;
 
-  if (lang === 'hi') {
-    utterance.lang = 'hi-IN';
-  } else if (lang === 'te') {
-    utterance.lang = 'te-IN';
-  } else {
-    utterance.lang = 'en-US';
+  if (activeAudio) {
+    try {
+      activeAudio.pause();
+      activeAudio.currentTime = 0;
+    } catch (e) {
+      // ignore
+    }
+    activeAudio = null;
   }
 
-  // Attempt to select specific Indian voice if available in user's OS
-  const voices = window.speechSynthesis.getVoices();
-  const matchedVoice = voices.find(
-    (v) =>
-      (lang === 'hi' && (v.lang.includes('hi') || v.name.toLowerCase().includes('hindi') || v.name.toLowerCase().includes('kalpana') || v.name.toLowerCase().includes('hemant'))) ||
-      (lang === 'te' && (v.lang.includes('te') || v.name.toLowerCase().includes('telugu') || v.name.toLowerCase().includes('chitra') || v.name.toLowerCase().includes('mohan'))) ||
-      (lang === 'en' && (v.lang.includes('en-IN') || v.lang.includes('en-US')))
-  );
+  if ('speechSynthesis' in window) {
+    try {
+      window.speechSynthesis.cancel();
+    } catch (e) {
+      // ignore
+    }
+  }
+}
 
-  if (matchedVoice) {
-    utterance.voice = matchedVoice;
+export function speakText(
+  text: string,
+  lang: VoiceLanguage,
+  onStart?: () => void,
+  onEnd?: () => void
+) {
+  if (typeof window === 'undefined') return;
+
+  stopSpeech();
+
+  // Try the neural audio stream from /api/ai/tts first
+  // This guarantees authentic native Hindi and Telugu voices on ANY OS
+  try {
+    const audioUrl = `/api/ai/tts?text=${encodeURIComponent(text)}&lang=${lang}`;
+    const audio = new Audio(audioUrl);
+    activeAudio = audio;
+
+    let hasStarted = false;
+
+    audio.onplay = () => {
+      hasStarted = true;
+      onStart?.();
+    };
+
+    audio.onended = () => {
+      activeAudio = null;
+      onEnd?.();
+    };
+
+    audio.onerror = (e) => {
+      activeAudio = null;
+      console.warn('Audio stream error, falling back to Web Speech API:', e);
+      fallbackSpeechSynthesis(text, lang, onStart, onEnd);
+    };
+
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch((err) => {
+        console.warn('Audio play restricted or failed, falling back to Web Speech API:', err);
+        activeAudio = null;
+        fallbackSpeechSynthesis(text, lang, onStart, onEnd);
+      });
+    }
+  } catch (err) {
+    console.warn('TTS streaming initialization failed, falling back:', err);
+    fallbackSpeechSynthesis(text, lang, onStart, onEnd);
+  }
+}
+
+function fallbackSpeechSynthesis(
+  text: string,
+  lang: VoiceLanguage,
+  onStart?: () => void,
+  onEnd?: () => void
+) {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+    onEnd?.();
+    return;
   }
 
-  utterance.onstart = () => onStart?.();
-  utterance.onend = () => onEnd?.();
-  utterance.onerror = () => onEnd?.();
+  try {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.88;
+    utterance.pitch = 1.0;
 
-  window.speechSynthesis.speak(utterance);
+    if (lang === 'hi') {
+      utterance.lang = 'hi-IN';
+    } else if (lang === 'te') {
+      utterance.lang = 'te-IN';
+    } else {
+      utterance.lang = 'en-US';
+    }
+
+    const voices = window.speechSynthesis.getVoices();
+    const matchedVoice = voices.find(
+      (v) =>
+        (lang === 'hi' &&
+          (v.lang.toLowerCase().includes('hi') ||
+            v.name.toLowerCase().includes('hindi') ||
+            v.name.toLowerCase().includes('kalpana') ||
+            v.name.toLowerCase().includes('hemant'))) ||
+        (lang === 'te' &&
+          (v.lang.toLowerCase().includes('te') ||
+            v.name.toLowerCase().includes('telugu') ||
+            v.name.toLowerCase().includes('chitra') ||
+            v.name.toLowerCase().includes('mohan'))) ||
+        (lang === 'en' && (v.lang.includes('en-IN') || v.lang.includes('en-US') || v.lang.includes('en-GB')))
+    );
+
+    if (matchedVoice) {
+      utterance.voice = matchedVoice;
+    }
+
+    utterance.onstart = () => onStart?.();
+    utterance.onend = () => onEnd?.();
+    utterance.onerror = () => onEnd?.();
+
+    window.speechSynthesis.speak(utterance);
+  } catch (e) {
+    onEnd?.();
+  }
 }
